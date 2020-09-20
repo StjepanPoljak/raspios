@@ -1,20 +1,27 @@
 PROJ=kernel8
-CROSS_COMPILE=aarch64-linux-gnu
+CROSS_COMPILE=aarch64-none-elf
 CFLAGS = -Wall -ffreestanding -nostdinc -nostdlib -nostartfiles
 LDFLAGS= -nostdlib -nostartfiles
 
 objs=start.o uart.o print.o
 
-all: $(PROJ).img
+srcdir=source
+incdir=include
+builddir=build
 
-%.o: %.S
+all: $(builddir) $(PROJ).img
+
+$(builddir):
+	mkdir $(builddir)
+
+$(builddir)/%.o: $(srcdir)/%.S
 	$(CROSS_COMPILE)-gcc $(CFLAGS) -c $< -o $@
 
-$(PROJ).elf: $(objs)
-	$(CROSS_COMPILE)-ld $(LDFLAGS) $^ -T link.ld -o $@
+$(builddir)/$(PROJ).elf: $(addprefix $(builddir)/,$(objs)) link.ld
+	$(CROSS_COMPILE)-ld $(LDFLAGS) $(filter-out link.ld,$^) -T link.ld -o $@
 
-$(PROJ).img: $(PROJ).elf
+$(PROJ).img: $(builddir)/$(PROJ).elf
 	$(CROSS_COMPILE)-objcopy -O binary $< $@
 
 clean:
-	rm -rf $(PROJ).elf $(PROJ).img $(objs)
+	rm -rf $(PROJ).img $(builddir)

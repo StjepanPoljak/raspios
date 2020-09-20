@@ -7,4 +7,5 @@ SECTIONS
 	.data : { *(.data) }
 	. += STACK_SIZE;
 	stack = .;
+	heap = .;
 }
