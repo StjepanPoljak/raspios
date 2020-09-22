@@ -1,3 +1,5 @@
+#include "config.h"
+
 .section ".text.boot"
 
 .globl _start
@@ -10,17 +12,7 @@ _start:
 
 control:
 
-	ldr x0, =0x30d00800
-	msr sctlr_el1, x0
-
-	ldr x0, =0x80000000
-	msr hcr_el2, x0
-
-	ldr x0, =0x431
-	msr scr_el3, x0
-
-	ldr x0, =0x1c5
-	msr spsr_el3, x0
+	os_el3 0
 
 	adr x0, entry
 	msr elr_el3, x0
@@ -38,8 +30,7 @@ entry:
 	adr	x1, uart_write_char
 	bl	print_string
 
-	adr	x0, irq_vector
-	msr	vbar_el1, x0
+	setup_irq_vector
 
 	adr	x0, irqs_init_msg
 	adr	x1, uart_write_char

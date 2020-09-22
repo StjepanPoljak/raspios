@@ -1,6 +1,6 @@
 PROJ=kernel8
 CROSS_COMPILE=aarch64-none-elf
-CFLAGS = -Wall -ffreestanding -nostdinc -nostdlib -nostartfiles
+CFLAGS = -Wall -ffreestanding -nostdinc -nostdlib -nostartfiles -Iinclude
 LDFLAGS= -nostdlib -nostartfiles
 
 objs=start.o uart.o print.o irq.o timer.o
