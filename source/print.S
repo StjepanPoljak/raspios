@@ -118,7 +118,7 @@ print_string:
 	mov	x19, x0
 
 print_string_loop:
-	ldr	w0, [x19]
+	ldrb	w0, [x19]
 	and	w0, w0, #0xFF
 	blr	x1
 

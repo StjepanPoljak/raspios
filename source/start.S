@@ -24,8 +24,6 @@ control:
 	mov	x2, #8
 	bl	print_hex
 
-	ret
-
 hang:
 	wfe
 	b	hang
