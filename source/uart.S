@@ -207,7 +207,7 @@ uart_init:
 	str	w19, [x20, AUX_MU_MCR]
 
 	/* disable interrupts */
-	mov	w19, #0
+	mov	w19, #0xf
 	str	w19, [x20, AUX_MU_IER]
 
 	/* clear FIFO */

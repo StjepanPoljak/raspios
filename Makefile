@@ -3,7 +3,7 @@ CROSS_COMPILE=aarch64-none-elf
 CFLAGS = -Wall -ffreestanding -nostdinc -nostdlib -nostartfiles
 LDFLAGS= -nostdlib -nostartfiles
 
-objs=start.o uart.o print.o
+objs=start.o uart.o print.o irq.o timer.o
 
 srcdir=source
 incdir=include
