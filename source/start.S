@@ -12,12 +12,24 @@ _start:
 
 control:
 
+	/* setup for U-Boot: if we are
+	 * in EL2, skip configuration
+	 * but route IRQs */
+
+	curr_el_to x0
+	cmp	x0, #2
+	b.eq	started_in_el2
+
 	os_el3 0
 
-	adr x0, entry
-	msr elr_el3, x0
+	adr	x0, entry
+	msr	elr_el3, x0
 
 	eret
+
+started_in_el2:
+
+	hypervisor_el2
 
 entry:
 	/* setup stack */
