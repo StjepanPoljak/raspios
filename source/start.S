@@ -17,19 +17,35 @@ control:
 	 * but route IRQs */
 
 	curr_el_to x0
+	cmp	x0, #3
+	b.eq	started_in_el3
 	cmp	x0, #2
 	b.eq	started_in_el2
 
-	os_el3 0
+	b hang
 
-	adr	x0, entry
-	msr	elr_el3, x0
+started_in_el3:
 
-	eret
+#if TARGET_EL == 3
+	scr_el3 SECURE 1
+	b entry
+#elif TARGET_EL == 2
+	hypervisor_el3
+#elif TARGET_EL == 1
+	kernel_el 3
+	scr_el3 SECURE 0
+#endif
+	enter_el 3 entry
 
 started_in_el2:
 
+#if TARGET_EL == 2
 	hypervisor_el2
+	b entry
+#elif TARGET_EL == 1
+	kernel_el 2
+#endif
+	enter_el 2 entry
 
 entry:
 	/* setup stack */
@@ -42,13 +58,15 @@ entry:
 	adr	x1, uart_write_char
 	bl	print_string
 
-	setup_irq_vector
+	irq_vector_el TARGET_EL
 
 	adr	x0, irqs_init_msg
 	adr	x1, uart_write_char
 	bl	print_string
 
 	bl	timer_init
+
+	/* rpi enable timer IRQ */
 
 	mov	w0, #0x2
 	ldr	x1, =0x3f00B210
@@ -58,6 +76,7 @@ entry:
 	ldr	x1, =0x3f00B214
 	str	w0, [x1]
 
+	/* enable interrupts */
 	msr	daifclr, #2
 
 	adr	x0, time_init_msg
@@ -68,10 +87,10 @@ entry:
 	adr	x1, uart_write_char
 	bl	print_string
 
-	mrs	x0, CurrentEL
+	curr_el_to x0
 	adr	x1, uart_write_char
-	mov	x2, #8
-	bl	print_hex
+	mov	x2, #1
+	bl	print_hex_raw
 
 hang:
 	wfi
