@@ -49,7 +49,7 @@ started_in_el2:
 
 entry:
 	/* setup stack */
-	ldr	x1, =0x04000000
+	ldr	x1, =STACK_TOP
 	mov	sp, x1
 
 	bl	uart_init

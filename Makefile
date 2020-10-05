@@ -2,7 +2,7 @@ PROJ = kernel8
 CROSS_COMPILE = aarch64-none-elf
 CFLAGS = -Wall -ffreestanding -nostdinc -nostdlib -nostartfiles -Iinclude
 LDFLAGS = -nostdlib -nostartfiles
-OPTIONS ?= -DBOOT_ADDR=0x01000000 -DSTACK_SIZE=0x1000 -DTOTAL_RAM_MB=1024 -DTARGET_EL=1 -DSECURE=0
+OPTIONS ?= -DBOOT_ADDR=0x01000000 -DSTACK_TOP=0x30000000 -DTARGET_EL=1 -DSECURE=0
 
 objs = start_S.o uart_S.o print_S.o irq_S.o timer_S.o main_c.o
 
