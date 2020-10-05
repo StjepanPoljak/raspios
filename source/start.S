@@ -49,7 +49,7 @@ started_in_el2:
 
 entry:
 	/* setup stack */
-	adr	x1, stack
+	ldr	x1, =0x04000000
 	mov	sp, x1
 
 	bl	uart_init
@@ -91,6 +91,11 @@ entry:
 	adr	x1, uart_write_char
 	mov	x2, #1
 	bl	print_hex_raw
+
+	bl	newline
+	bl	newline
+
+	bl	main
 
 hang:
 	wfi

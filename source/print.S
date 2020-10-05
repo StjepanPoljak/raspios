@@ -45,12 +45,6 @@ print_hex_b:
 
 	ret
 
-.macro switch first second placeholder
-	mov \placeholder, \first
-	mov \first, \second
-	mov \second, \placeholder
-.endm
-
 .globl print_hex_raw
 /* x0 - register to print
  * x1 - address of function to use to print
@@ -130,3 +124,18 @@ print_string_loop:
 
 	ret
 
+.globl newline
+newline:
+	sub	sp, sp, #(16*1)
+	str	x30, [sp]
+
+	adr	x0, newl
+	adr	x1, uart_write_char
+	bl	print_string
+
+	ldr	x30, [sp]
+	add	sp, sp, #(16*1)
+
+	ret
+
+newl: .asciz "\n\r"

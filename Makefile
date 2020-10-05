@@ -2,9 +2,9 @@ PROJ = kernel8
 CROSS_COMPILE = aarch64-none-elf
 CFLAGS = -Wall -ffreestanding -nostdinc -nostdlib -nostartfiles -Iinclude
 LDFLAGS = -nostdlib -nostartfiles
-OPTIONS ?= -DBOOT_ADDR=0x00000000 -DSTACK_SIZE=0x1000 -DTARGET_EL=1 -DSECURE=0
+OPTIONS ?= -DBOOT_ADDR=0x01000000 -DSTACK_SIZE=0x1000 -DTOTAL_RAM_MB=1024 -DTARGET_EL=1 -DSECURE=0
 
-objs = start.o uart.o print.o irq.o timer.o
+objs = start_S.o uart_S.o print_S.o irq_S.o timer_S.o main_c.o
 
 srcdir = source
 incdir = include
@@ -15,7 +15,10 @@ all: $(builddir) $(PROJ).img
 $(builddir):
 	mkdir $(builddir)
 
-$(builddir)/%.o: $(srcdir)/%.S include/*.h
+$(builddir)/%_c.o: $(srcdir)/%.c include/*.h
+	$(CROSS_COMPILE)-gcc $(OPTIONS) $(CFLAGS) -c $< -o $@
+
+$(builddir)/%_S.o: $(srcdir)/%.S include/*.h
 	$(CROSS_COMPILE)-gcc $(OPTIONS) $(CFLAGS) -c $< -o $@
 
 $(builddir)/$(PROJ).elf: $(addprefix $(builddir)/,$(objs)) link.ld
