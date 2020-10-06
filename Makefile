@@ -3,8 +3,9 @@ CROSS_COMPILE = aarch64-none-elf
 CFLAGS = -Wall -ffreestanding -nostdinc -nostdlib -nostartfiles -Iinclude
 LDFLAGS = -nostdlib -nostartfiles
 OPTIONS ?= -DBOOT_ADDR=0x01000000 -DSTACK_TOP=0x30000000 -DTARGET_EL=1 -DSECURE=0
+C_INCLUDE_PATH ?= cc/aarch64-none-elf/include
 
-objs = start_S.o uart_S.o print_S.o irq_S.o timer_S.o main_c.o
+objs = start_S.o uart_S.o print_S.o irq_S.o timer_S.o main_c.o mem_c.o
 
 srcdir = source
 incdir = include
@@ -28,5 +29,9 @@ $(builddir)/$(PROJ).elf: $(addprefix $(builddir)/,$(objs)) link.ld
 $(PROJ).img: $(builddir)/$(PROJ).elf
 	$(CROSS_COMPILE)-objcopy -O binary $< $@
 
+objdump: $(builddir)/$(PROJ).elf
+	$(CROSS_COMPILE)-objdump -D $< | vi -
+
+.PHONY=clean
 clean:
 	rm -rf $(PROJ).img $(builddir)

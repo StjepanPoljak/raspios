@@ -2,6 +2,8 @@
 
 .section ".text.boot"
 
+.globl heap
+
 .globl _start
 _start:
 	/* if we are not on core0, hang */

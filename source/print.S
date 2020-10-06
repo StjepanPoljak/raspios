@@ -46,7 +46,7 @@ print_hex_b:
 	ret
 
 .globl print_hex_raw
-/* x0 - register to print
+/* x0 - value to print
  * x1 - address of function to use to print
  * x2 - size in bytes */
 print_hex_raw:
@@ -78,7 +78,7 @@ print_hex_raw_loop:
 	ret
 
 .globl print_hex
-/* x0 - register to print
+/* x0 - value to print
  * x1 - address of function to use to print
  * x2 - size in bytes */
 print_hex:
