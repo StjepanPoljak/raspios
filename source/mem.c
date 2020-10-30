@@ -107,15 +107,6 @@ static uint8_t heap_empty(void) {
 
 void mem_init(void) {
 
-	__asm__(
-		"adr x0, bss_start;"
-		"adr x1, bss_end;"
-		"bss_zero:"
-		"	strb wzr, [x0];"
-		"	add x0, x0, #1;"
-		"	cmp x0, x1;"
-		"	b.lt bss_zero;");
-
 	reset_heap();
 
 	memlog(, "Initializing memory (heap@");

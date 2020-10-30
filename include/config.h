@@ -1,4 +1,16 @@
-.macro hypervisor_el2 irqs
+#define _MMU_ENABLED 1
+#define _MMU_DISABLED 0
+
+#define _SECURE 1
+#define _UNSECURE 0
+
+#define _IRQ_ROUTE 1
+#define _IRQ_NOROUTE 0
+
+#define _FIQ_ROUTE 1
+#define _FIQ_NOROUTE 0
+
+.macro hcr_el2 irq_route fiq_route
 	/*	
 	 * ======= hcr_el2 =======
 	 *    hypervisor control
@@ -16,19 +28,39 @@
 	 * -----------------------
 	 * IRQs are taken to EL2
 	 * unless routed to EL3 */
-	orr	x0, x0, #0x10
+	mov	x1, #\irq_route
+	lsl	x1, x1, #4
+	orr	x0, x0, x1
+
+	/* physical FIQ routing(3)
+	 * -----------------------
+	 * FIQs are taken to EL2
+	 * unless routed to EL3 */
+	mov	x1, #\fiq_route
+	lsl	x1, x1, #3
+	orr	x0, x0, x1
 
 	msr	hcr_el2, x0
 .endm
 
-.macro enter_el el entry
+
+.macro enter_el el_src el_dest entry
+
+	/* invalid for EL0
+	 * EL1 = 0x5
+	 * EL2 = 0x9 */
+	mov	x0, #\el_dest
+	lsl	x0, x0, #2
+	add	x0, x0, #1
+	msr	spsr_el\el_src, x0
+
 	adr	x0, \entry
-	msr	elr_el\el, x0
+	msr	elr_el\el_src, x0
 
 	eret
 .endm
 
-.macro sctlr_el el
+.macro set_mmu_el el enabled
 	/*
 	 * ===== sctlr_elx =======
 	 *     system control
@@ -45,7 +77,7 @@
 	 * -----------------------
 	 * write 1 to each reserved
 	 * register */
-	ldr	w0, =0x30c50830
+	ldr	x0, =0x30c50830
 
 	/* I (12)
 	 * -----------------------
@@ -59,99 +91,20 @@
 	 * -----------------------
 	 *  disable MMU */
 
-	/* to disable I, C and M,
-	 * write zeros
-	 * (already in w0) */
+	ldr	w2, =\enabled
+	lsl	w1, w2, #12
+	orr	w0, w0, w1
+	lsl	w1, w2, #2
+	orr	w0, w0, w1
+	orr	w0, w0, w2
 
 	msr	sctlr_el\el, x0
 
 .endm
 
-.macro hypervisor_el3
-
-	sctlr_el 2
-
-	hypervisor_el2
-
-	/*	
-	 * ======= scr_el3 =======
-	 *  secure configuration
-	 *        register
-	 * ======================= 
-	 */
-
-	/* RW (10)
-	 * -----------------------
-	 * execution state for EL2
-	 * is AArch64 */
-	ldr	x0, =0x400
-
-#if SECURE == 1
-#error "Cannot configure hypervisor as secure."
-#endif
-
-	/* NS (0)
-	 * -----------------------
-	 * exception levels lower
-	 * than EL3 are in non-secure
-	 * state (note that there is
-	 * no EL2 in secure world) */
-	orr	x0, x0, #1
-	msr	scr_el3, x0
-
-	/*	
-	 * ====== spsr_el3 =======
-	 *  saved program status
-	 *        register
-	 * ======================= 
-	 */
-
-	/* M (3:0)
-	 * -----------------------
-	 * AArch64 exception level
-	 * and selected stack pointer
-	 * (here: EL2h) */
-	mov	x0, #0x9
-	msr	spsr_el3, x0
-.endm
-
-.macro kernel_el el
-
-	sctlr_el \el
-
-	/*	
-	 * ======= hcr_el2 =======
-	 *    hypervisor control
-	 *        register
-	 * ======================= 
-	 */
-
-	/* RW (31)
-	 * -----------------------
-	 * execution state for EL1
-	 * is AArch64 */
-	ldr	x0, =0x80000000
-	msr	hcr_el2, x0
-	
-	/*	
-	 * ====== spsr_elx =======
-	 *  saved program status
-	 *        register
-	 * ======================= 
-	 */
-
-	/* M (3:0)
-	 * -----------------------
-	 * AArch64 exception level
-	 * and selected stack pointer
-	 * (here: EL1h) */
-	mov	x0, #0x5
-	msr	spsr_el\el, x0
-.endm
-
 /* secure = 1
  * non-secure = 0 */
-.macro scr_el3 secure irqs
+.macro scr_el3 secure irq_route fiq_route
 	/*	
 	 * ======= scr_el3 =======
 	 *  secure configuration
@@ -164,15 +117,33 @@
 	 * execution state for EL2
 	 * is AArch64 */
 	ldr	x0, =0x400
+
+	/* HCE (8)
+	 * -----------------------
+	 * enable HVC instructions */
+	mov	x1, #1
+	lsl	x1, x1, #8
+	orr	x0, x1, x1
+
+	/* EA (3)
+	 * -----------------------
+	 * route SError to EL3 */
+	orr	x0, x0, #0x8
+
+	/* FIQ (2)
+	 * -----------------------
+	 * take physical FIQs to
+	 * EL3 */
+	mov	x1, #\fiq_route
+	lsl	x1, x1, #2
+	orr	x0, x0, x1
 
 	/* IRQ (1)
 	 * -----------------------
 	 * take physical IRQs to
-	 * EL3 (bit set) */
-
-	ldr	x1, =\irqs
+	 * EL3 */
+	mov	x1, #\irq_route
 	lsl	x1, x1, #1
-	and	x1, x1, #2
 	orr	x0, x0, x1
 
 	/* NS (0)
@@ -181,8 +152,7 @@
 	 * than EL3 are in non-secure
 	 * state (note that there is
 	 * no EL2 in secure world) */
-	ldr	x1, =\secure
-	and	x1, x1, #1
+	mov	x1, #\secure
 	orr	x0, x0, x1
 
 	msr	scr_el3, x0

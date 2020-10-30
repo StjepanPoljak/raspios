@@ -12,44 +12,60 @@ _start:
 	cbz	x0, control
 	b	hang
 
+/* x0 - start address
+ * x1 - end address */
+memzero:
+	strb wzr, [x0]
+	add x0, x0, #1
+	cmp x0, x1
+	b.lt memzero
+	ret
+
 control:
 
+	adr x0, bss_start
+	adr x1, bss_end
+	bl memzero
+
+	adr x0, tt_l1_base
+	adr x1, tt_l1_base_end
+	bl memzero
+
 	/* setup for U-Boot: if we are
-	 * in EL2, skip configuration
-	 * but route IRQs */
+	 * in EL2, skip EL3 entry */
 
 	curr_el_to x0
 	cmp	x0, #3
-	b.eq	started_in_el3
+	b.eq	el3_entry
 	cmp	x0, #2
-	b.eq	started_in_el2
+	b.eq	no_el3_entry
 
 	b hang
 
-started_in_el3:
+el3_entry:
 
-#if TARGET_EL == 3
-	scr_el3 SECURE 1
-	b entry
-#elif TARGET_EL == 2
-	hypervisor_el3
-#elif TARGET_EL == 1
-	kernel_el 3
-	scr_el3 SECURE 0
-#endif
-	enter_el 3 entry
+	scr_el3 _UNSECURE _IRQ_NOROUTE _FIQ_NOROUTE
 
-started_in_el2:
+	/* MMU and cache is always
+	 * disabled in EL3 */
+	set_mmu_el 2 _MMU_DISABLED
+	set_mmu_el 1 _MMU_DISABLED
 
-#if TARGET_EL == 2
-	hypervisor_el2
-	b entry
-#elif TARGET_EL == 1
-	kernel_el 2
-#endif
-	enter_el 2 entry
+	enter_el 3 2 el2_entry
 
-entry:
+no_el3_entry:
+
+	set_mmu_el 2 _MMU_DISABLED
+	set_mmu_el 1 _MMU_DISABLED
+
+el2_entry:
+
+	hcr_el2	_IRQ_NOROUTE _FIQ_NOROUTE
+
+	enter_el 2 1 el1_entry
+
+el1_entry:
+
 	/* setup stack */
 	ldr	x1, =STACK_TOP
 	mov	sp, x1
