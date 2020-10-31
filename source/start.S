@@ -76,7 +76,7 @@ el1_entry:
 	adr	x1, uart_write_char
 	bl	print_string
 
-	irq_vector_el TARGET_EL
+	irq_vector_el 1
 
 	adr	x0, irqs_init_msg
 	adr	x1, uart_write_char
