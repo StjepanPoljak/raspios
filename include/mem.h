@@ -15,7 +15,7 @@
 /* Print pointer. */
 #define printptr(ptr) print64(raw_ptr(ptr))
 
-reg_t heap;
+reg_t _ld_heap;
 
 struct memheader_t {
 	struct memheader_t* prev;

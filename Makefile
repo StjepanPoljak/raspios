@@ -5,11 +5,12 @@ LDFLAGS = -nostdlib -nostartfiles
 OPTIONS ?= -DBOOT_ADDR=0x01000000 -DSTACK_TOP=0x30000000 -DSECURE=0
 C_INCLUDE_PATH ?= cc/aarch64-none-elf/include
 
-objs = start_S.o uart_S.o print_S.o irq_S.o timer_S.o main_c.o mem_c.o
-
 srcdir = source
 incdir = include
 builddir = build
+
+objs = $(addsuffix _c.o,$(basename $(notdir $(wildcard source/*.c))))
+objs += $(addsuffix _S.o,$(basename $(notdir $(wildcard source/*.S))))
 
 all: $(builddir) $(PROJ).img
 

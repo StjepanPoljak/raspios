@@ -2,7 +2,7 @@
 
 .section ".text.boot"
 
-.globl heap
+.globl _ld_heap
 
 .globl _start
 _start:
@@ -12,24 +12,7 @@ _start:
 	cbz	x0, control
 	b	hang
 
-/* x0 - start address
- * x1 - end address */
-memzero:
-	strb wzr, [x0]
-	add x0, x0, #1
-	cmp x0, x1
-	b.lt memzero
-	ret
-
 control:
-
-	adr x0, bss_start
-	adr x1, bss_end
-	bl memzero
-
-	adr x0, tt_l1_base
-	adr x1, tt_l1_base_end
-	bl memzero
 
 	/* setup for U-Boot: if we are
 	 * in EL2, skip EL3 entry */
@@ -66,19 +49,27 @@ el2_entry:
 
 el1_entry:
 
-	/* setup stack */
-	ldr	x1, =STACK_TOP
+	/* setup early stack */
+	adr	x1, _ld_early_stack
 	mov	sp, x1
 
 	bl	uart_init
 
-	adr	x0, test_string
-	adr	x1, uart_write_char
-	bl	print_string
-
 	irq_vector_el 1
 
 	adr	x0, irqs_init_msg
+	adr	x1, uart_write_char
+	bl	print_string
+
+	adr	x0, _ld_bss_start
+	adr	x1, _ld_bss_end
+	bl	memzero
+
+	adr	x0, _ld_tt_l1_base
+	adr	x1, _ld_tt_l1_base_end
+	bl	memzero
+
+	adr	x0, test_string
 	adr	x1, uart_write_char
 	bl	print_string
 

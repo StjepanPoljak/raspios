@@ -1,17 +1,22 @@
+EARLY_STACK_SIZE = 0x1000;
+
 SECTIONS
 {
 	. = BOOT_ADDR;
 	.text.boot : { *(.text.boot) }
 	.data : { *(.data, .rodata) }
+	. += EARLY_STACK_SIZE;
 	. = ALIGN(16);
-	bss_start = .;
+	_ld_early_stack = .;
+
+	_ld_bss_start = .;
 	.bss : { *(.bss) }
-	. = ALIGN(16);
-	bss_end = .;
+	_ld_bss_end = .;
+
 	. = ALIGN(4096);
-	tt_l1_base = .;
+	_ld_tt_l1_base = .;
 	. += 4096;
-	tt_l1_base_end = .;
-	. = ALIGN(16);
-	heap = .;
+	_ld_tt_l1_base_end = .;
+
+	_ld_heap = .;
 }

@@ -21,6 +21,8 @@ static mem_size_t hole_count;
 #define memlog(suffix, value) ;;
 #endif
 
+reg_t* heap;
+
 /* pad and align functions */
 
 mem_size_t pad(mem_size_t ms, align_t algn) {
@@ -46,7 +48,7 @@ static mem_size_t memheader_size(void) {
 #ifdef MEM_TESTS
 static void memheader_pad_test(void) {
 
-	memlog(ln, "(1) Testing memheader_t padment...");
+	memlog(ln, "(1) Testing memheader_t padding...");
 
 	if ((memheader_size() % DEFAULT_ALIGN) != 0)
 		memlog(ln, "(!) Non-padment detected in memheader_t.");
@@ -94,7 +96,7 @@ static void static_variable_integrity_test(void) {
 
 static void reset_heap(void) {
 
-	memfirst = (memheader_t*)(&heap);
+	memfirst = (memheader_t *)heap;
 	memlast = 0;
 
 	return;
@@ -106,6 +108,8 @@ static uint8_t heap_empty(void) {
 }
 
 void mem_init(void) {
+
+	heap = (reg_t*)(&_ld_heap);
 
 	reset_heap();
 
@@ -290,16 +294,16 @@ void* alloc_slow(mem_size_t size, enum alloc_slow_mode mode) {
 
 	if (mode == ALLOC_SLOW_UP) {
 
-		if ((mem_size_t)(raw_ptr(memfirst) - (addr_t)(&heap))
+		if ((mem_size_t)(raw_ptr(memfirst) - (addr_t)(heap))
 		    >= tbsize) {
 
 			memlog(, "   -> prepending (memfirst@");
 			memlog(ptr, memfirst);
 			memlog(, ", heap@");
-			memlog(ld, heap);
+			memlog(ld, *heap);
 			memlog(ln, ").");
 
-			ret = insert(size, (addr_t)(&heap), 0, memfirst);
+			ret = insert(size, (addr_t)(heap), 0, memfirst);
 			memfirst = get_memheader_of(ret);
 
 			return ret;
