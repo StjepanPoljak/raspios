@@ -55,6 +55,10 @@ el1_entry:
 
 	bl	uart_init
 
+	adr	x0, test_string
+	adr	x1, uart_write_char
+	bl	print_string
+
 	irq_vector_el 1
 
 	adr	x0, irqs_init_msg
@@ -68,10 +72,6 @@ el1_entry:
 	adr	x0, _ld_tt_l1_base
 	adr	x1, _ld_tt_l1_base_end
 	bl	memzero
-
-	adr	x0, test_string
-	adr	x1, uart_write_char
-	bl	print_string
 
 	bl	timer_init
 

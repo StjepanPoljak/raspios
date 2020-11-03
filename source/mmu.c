@@ -2,39 +2,53 @@
 
 #include <stdint.h>
 
-static uint8_t mmu_add_mair_entry(uint8_t mmu_mair[8], mmu_attr_entry_t* mmu_entry, uint8_t index) {
+#include "bridge.h"
 
-	struct mmu_cacheable_mem* attrs;
+static uint8_t mmu_add_device_memory(uint8_t mair[8], uint8_t index,
+				     enum mmu_device_attr dattr) {
 
 	if (index >= 8 || index < 0)
 		return 1;
 
-	mmu_mair[index] = 0x0;
-
-	if (mmu_entry->mmu_type == MMU_DEVICE) {
-		mmu_mair[index] = (uint8_t)mmu_entry->mmu_attr.device_attr;
-		return 0;
-	}
-
-	if (mmu_entry->mmu_attr.normal_attrs.inner.cacheability == MMU_NON_CACHEABLE)
-		mmu_mair[index] = 0x4;
-	else {
-		attrs = &(mmu_entry->mmu_attr.normal_attrs.inner.attrs);
-		mmu_mair[index] = attrs->trans_attr
-				| attrs->write_policy
-				| attrs->read_allocate
-				| attrs->write_allocate;
-	}
-
-	if (mmu_entry->mmu_attr.normal_attrs.outer.cacheability == MMU_NON_CACHEABLE)
-		mmu_mair[index] |= 0x4 << 4;
-	else {
-		attrs = &(mmu_entry->mmu_attr.normal_attrs.outer.attrs);
-		mmu_mair[index] = (attrs->trans_attr << 4)
-				| (attrs->write_policy << 4)
-				| (attrs->read_allocate << 4)
-				| (attrs->write_allocate << 4);
-	}
+	mair[index] = (uint8_t)dattr;
 
 	return 0;
+}
+
+static uint8_t mmu_create_cacheable(
+		enum mmu_shd shd,
+		enum mmu_trans_attr trans,
+		enum mmu_write_policy wp,
+		enum mmu_read_alloc ra,
+		enum mmu_write_alloc wa) {
+
+	return (trans | wp | ra | wa) << (shd == MMU_OSH ? 4 : 0);
+}
+
+static uint8_t mmu_create_non_cacheable(enum mmu_shd shd) {
+
+	return 0x4 << (shd == MMU_OSH ? 4 : 0);
+}
+
+static uint8_t mmu_add_normal_memory(uint8_t mair[8], uint8_t index,
+				     uint8_t inner, uint8_t outer) {
+
+	if (index >= 8 || index < 0)
+		return 1;
+
+	mair[index] = inner | outer;
+
+	return 0;
+}
+
+static void mmu_save_mair(uint8_t mair[8]) {
+
+	__asm volatile(
+		"ldr x1, [%0];"
+		"msr mair_el1, x1;"
+		: // no output
+		: "r" (mair));
+
+	return;
+
 }
