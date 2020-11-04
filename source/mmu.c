@@ -45,11 +45,10 @@ static uint8_t mmu_add_device_memory(uint8_t mair[8], uint8_t index,
 	return 0;
 }
 
-static uint8_t mmu_create_cacheable(
-		enum mmu_trans_attr trans,
-		enum mmu_write_policy wp,
-		enum mmu_read_alloc ra,
-		enum mmu_write_alloc wa) {
+static uint8_t mmu_create_cacheable(enum mmu_trans_attr trans,
+				    enum mmu_write_policy wp,
+				    enum mmu_read_alloc ra,
+				    enum mmu_write_alloc wa) {
 
 	uint8_t res = trans | wp | ra | wa;
 
@@ -112,6 +111,108 @@ static void mmu_save_mair(uint8_t mair[8]) {
 	return;
 }
 
+/* TCR-related */
+
+void mmu_invalidate_tlbs(void) {
+
+	__asm volatile(
+		"tlbi alle3;"
+		"dsb sy;"
+		"isb");
+
+	return;
+}
+
+static uint8_t mmu_tlb_non_cacheable_attr(void) {
+
+	return 0x0;
+}
+
+static uint8_t mmu_tlb_cacheable_attr(
+		enum mmu_write_policy wp,
+		enum mmu_write_alloc wa) {
+
+	if (wp == MMU_WRITE_BACK && wa == MMU_WRITE_ALLOCATE)
+		return 0x1;
+
+	else if (wp == MMU_WRITE_THROUGH && wa == MMU_WRITE_NO_ALLOCATE)
+		return 0x2;
+
+	else if (wp == MMU_WRITE_BACK && wa == MMU_WRITE_NO_ALLOCATE)
+		return 0x3;
+
+	else {
+		log_error(ln, "Invalid TLB cache attribute.");
+		_mmu_trace(, "  -> wp=");
+		_mmu_trace(64, wp);
+		_mmu_trace(, " wa=");
+		_mmu_trace(64, wa);
+		_mmu_trace(ln, "");
+	}
+
+	return 0x0;
+}
+
+static uint8_t mmu_create_tcr_attrs(uint8_t va_space_bits,
+				    enum mmu_tlb_miss_attr miss_attr,
+				    uint8_t inner_attrs,
+				    uint8_t outer_attrs,
+				    enum mmu_tlb_sh_attr sh_attr,
+				    enum mmu_granule_size granule_size) {
+	uint32_t res = 0;
+
+	if (va_space_bits >= 32) {
+		log_error(, "Invalid VA space size (");
+		_log(64, va_space_bits);
+		_log(ln, ")");
+
+		return 2;
+	}
+
+	if (inner_attrs >= 4) {
+		log_error(, "Invalid IRGN bits (");
+		_log(64, inner_attrs);
+		_log(ln, ")");
+
+		return 3;
+	}
+
+	if (outer_attrs >= 4) {
+		log_error(, "Invalid ORGN bits (");
+		_log(64, outer_attrs);
+		_log(ln, ")");
+
+		return 4;
+	}
+
+	res |= va_space_bits;
+	res |= (miss_attr << 7);
+	res |= (inner_attrs << 8);
+	res |= (outer_attrs << 10);
+	res |= (sh_attr << 12);
+	res |= (granule_size << 14);
+
+	mmu_trace(, "Created TCR table attribute: ", LOG_INFO);
+	_mmu_trace(64, res);
+	_mmu_trace(ln, "");
+
+	return res;
+}
+
+static reg_t mmu_create_tcr(uint16_t t0, uint16_t t1,
+			    enum mmu_ipa_size ipa_size) {
+
+	reg_t res = t0 | (t1 << 16) | (ipa_size << 32);
+
+	mmu_trace(, "Created TCR: ", LOG_INFO);
+	_mmu_trace(64, res);
+	_mmu_trace(ln, "");
+
+	return res;
+}
+
+/* general */
+
 void mmu_init(void) {
 
 	uint8_t mair[8] = { 0 };
@@ -141,4 +242,6 @@ void mmu_init(void) {
 	mmu_save_mair(mair);
 
 	mmu_load_table("ttbr0_el1", "_ld_tt_l1_base");
+
+	return;
 }
