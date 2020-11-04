@@ -8,12 +8,6 @@ enum mmu_device_attr {
 	MMU_DEVICE_GRE		= 0xc
 };
 
-/* shareability domain */
-enum mmu_shd {
-	MMU_ISH,
-	MMU_OSH
-};
-
 enum mmu_trans_attr {
 	MMU_TRANSIENT		= 0x8,
 	MMU_NON_TRANSIENT	= 0x0
@@ -33,5 +27,7 @@ enum mmu_write_alloc {
 	MMU_WRITE_ALLOCATE	= 0x1,
 	MMU_WRITE_NO_ALLOCATE	= 0x0
 };
+
+void mmu_init(void);
 
 #endif

@@ -1,5 +1,7 @@
 #include "mem.h"
 
+#include "log.h"
+
 static memheader_t* memlast;
 static memheader_t* memfirst;
 
@@ -16,9 +18,11 @@ static mem_size_t hole_count;
 #define pad_default(size) pad(size, DEFAULT_ALIGN)
 
 #ifdef MEM_TRACE
-#define memlog(suffix, value) print ## suffix(value)
+#define _mem_trace(suffix, value) print ## suffix(value)
+#define mem_trace(suffix, value, level) log(suffix, value, level)
 #else
-#define memlog(suffix, value) ;;
+#define _mem_trace(suffix, value) ;;
+#define mem_trace(suffix, value, level) ;;
 #endif
 
 reg_t* heap;
@@ -48,12 +52,12 @@ static mem_size_t memheader_size(void) {
 #ifdef MEM_TESTS
 static void memheader_pad_test(void) {
 
-	memlog(ln, "(1) Testing memheader_t padding...");
+	log_test(ln, "Testing memheader_t padding...");
 
 	if ((memheader_size() % DEFAULT_ALIGN) != 0)
-		memlog(ln, "(!) Non-padment detected in memheader_t.");
+		log_fail(ln, "Non-alignment detected in memheader_t.");
 
-	memlog(ln, "(1) Alignment of memheader_t OK.");
+	log_test(ln, "Alignment of memheader_t OK.");
 
 	return;
 }
@@ -64,19 +68,19 @@ static void pad_tests(void) {
 	uint16_t res[10] = { 8, 8, 16, 16, 24, 32, 32, 32, 104, 1000 };
 	uint8_t i;
 
-	memlog(ln, "(2) Starting pad() unit test.");
+	log_test(ln, "Starting pad() unit test.");
 
 	for (i = 0; i < 10; i++)
 		if (pad(vec[i], 8) != res[i]) {
-			memlog(ln, "(!) Inconsistency detected in pad().");
-			memlog(, " -> invalid padment at i=");
-			memlog(64, i);
-			memlog(ln, "");
+			log_fail(ln, "Inconsistency detected in pad().");
+			_mem_trace(, " -> invalid alignment at i=");
+			_mem_trace(64, i);
+			_mem_trace(ln, "");
 
 			return;
 		}
 
-	memlog(ln, "(2) Unit test for pad() passed.");
+	log_test(ln, "Unit test for pad() passed.");
 
 	return;
 }
@@ -84,9 +88,9 @@ static void pad_tests(void) {
 static void static_variable_integrity_test(void) {
 
 	if (memlast || alloc_size || hole_size || alloc_count || hole_count)
-		memlog(ln, "(!) Static variable integrity questionable.");
+		log_fail(ln, "Static variable integrity questionable.");
 	else
-		memlog(ln, "(3) Static variable integrity test passed.");
+		log_test(ln, "Static variable integrity test passed.");
 
 	return;
 }
@@ -113,9 +117,9 @@ void mem_init(void) {
 
 	reset_heap();
 
-	memlog(, "Initializing memory (heap@");
-	memlog(ptr, memfirst);
-	memlog(ln, ").");
+	mem_trace(, "Initializing memory (heap@", LOG_INFO);
+	_mem_trace(ptr, memfirst);
+	_mem_trace(ln, ").");
 
 
 #ifdef MEM_TESTS
@@ -166,19 +170,19 @@ static void account_slow(mem_size_t ms) {
 
 void dump_mem_accounting(void) {
 
-	memlog(ln, "(i) Dumping memory accounting data:");
-	memlog(, "   -> alloc_count = ");
-	memlog(64, alloc_count);
-	memlog(ln, "");
-	memlog(, "   -> alloc_size = ");
-	memlog(64, alloc_size);
-	memlog(ln, "");
-	memlog(, "   -> hole_count = ");
-	memlog(64, hole_count);
-	memlog(ln, "");
-	memlog(, "   -> hole_size = ");
-	memlog(64, hole_size);
-	memlog(ln, "");
+	log_info(ln, "Dumping memory accounting data:");
+	_log(, "   -> alloc_count = ");
+	_log(64, alloc_count);
+	_log(ln, "");
+	_log(, "   -> alloc_size = ");
+	_log(64, alloc_size);
+	_log(ln, "");
+	_log(, "   -> hole_count = ");
+	_log(64, hole_count);
+	_log(ln, "");
+	_log(, "   -> hole_size = ");
+	_log(64, hole_size);
+	_log(ln, "");
 
 	return;
 }
@@ -195,20 +199,20 @@ void* alloc_fast(mem_size_t bsize) {
 	memheader_t* new_block;
 	void* ret;
 
-	memlog(, "(i) Requested block of ");
-	memlog(64, bsize);
-	memlog(ln, " bytes (fast).");
+	mem_trace(, "Requested block of ", LOG_INFO);
+	_mem_trace(64, bsize);
+	_mem_trace(ln, " bytes (fast).");
 
 	if (memlast != 0) {
-		memlog(, "   -> memlast@");
-		memlog(ptr, memlast);
-		memlog(ln, "");
+		_mem_trace(, "   -> memlast@");
+		_mem_trace(ptr, memlast);
+		_mem_trace(ln, "");
 		new_block = (memheader_t*)(raw_ptr(memlast)
 			    + total_block_size(memlast));
 		memlast->next = new_block;
 	}
 	else {
-		memlog(ln, "   -> first allocation (fast) in heap");
+		_mem_trace(ln, "   -> first allocation (fast) in heap");
 		new_block = memfirst;
 	}
 
@@ -224,14 +228,14 @@ void* alloc_fast(mem_size_t bsize) {
 
 	account_fast(total_block_size(new_block));
 
-	memlog(, "   -> alloc@");
-	memlog(ptr, new_block);
-	memlog(, " (data@");
-	memlog(ptr, ret);
-	memlog(ln, ").");
-	memlog(, "   -> size=");
-	memlog(64, (uint64_t)total_block_size(new_block));
-	memlog(ln, "");
+	_mem_trace(, "   -> alloc@");
+	_mem_trace(ptr, new_block);
+	_mem_trace(, " (data@");
+	_mem_trace(ptr, ret);
+	_mem_trace(ln, ").");
+	_mem_trace(, "   -> size=");
+	_mem_trace(64, (uint64_t)total_block_size(new_block));
+	_mem_trace(ln, "");
 
 	return ret;
 }
@@ -263,11 +267,11 @@ static void* insert(mem_size_t ms, addr_t addr,
 
 	ret = (void*)(raw_ptr(new_block) + (addr_t)new_block->block_size);
 
-	memlog(, "   -> alloc@");
-	memlog(ptr, new_block);
-	memlog(, " (data@");
-	memlog(ptr, ret);
-	memlog(ln, ").");
+	_mem_trace(, "   -> alloc@");
+	_mem_trace(ptr, new_block);
+	_mem_trace(, " (data@");
+	_mem_trace(ptr, ret);
+	_mem_trace(ln, ").");
 
 	return ret;
 }
@@ -285,9 +289,9 @@ void* alloc_slow(mem_size_t size, enum alloc_slow_mode mode) {
 	mem_size_t memdiff;
 	mem_size_t tbsize_curr;
 
-	memlog(, "(i) Requested block of ");
-	memlog(64, size);
-	memlog(ln, " bytes (slow).");
+	mem_trace(, "Requested block of ", LOG_INFO);
+	_mem_trace(64, size);
+	_mem_trace(ln, " bytes (slow).");
 
 	tbsize = memheader_size() + pad(size, DEFAULT_ALIGN);
 	ret = 0;
@@ -297,11 +301,11 @@ void* alloc_slow(mem_size_t size, enum alloc_slow_mode mode) {
 		if ((mem_size_t)(raw_ptr(memfirst) - (addr_t)(heap))
 		    >= tbsize) {
 
-			memlog(, "   -> prepending (memfirst@");
-			memlog(ptr, memfirst);
-			memlog(, ", heap@");
-			memlog(ld, *heap);
-			memlog(ln, ").");
+			_mem_trace(, "   -> prepending (memfirst@");
+			_mem_trace(ptr, memfirst);
+			_mem_trace(, ", heap@");
+			_mem_trace(ld, *heap);
+			_mem_trace(ln, ").");
 
 			ret = insert(size, (addr_t)(heap), 0, memfirst);
 			memfirst = get_memheader_of(ret);
@@ -318,9 +322,9 @@ void* alloc_slow(mem_size_t size, enum alloc_slow_mode mode) {
 
 			if ((memdiff - tbsize_curr) >= tbsize) {
 
-				memlog(, "   -> found hole of size = ");
-				memlog(64, memdiff);
-				memlog(ln, "");
+				_mem_trace(, "   -> found hole of size = ");
+				_mem_trace(64, memdiff);
+				_mem_trace(ln, "");
 
 				ret = insert(size,
 					     raw_ptr(curr) + (addr_t)tbsize_curr,
@@ -332,7 +336,7 @@ void* alloc_slow(mem_size_t size, enum alloc_slow_mode mode) {
 		}
 	}
 
-	memlog(ln, "(!) No suitable holes in heap, resorting to alloc_fast().");
+	mem_trace(ln, "No suitable holes in heap, resorting to alloc_fast().", LOG_INFO);
 
 	return alloc_fast(size);
 }
@@ -344,9 +348,9 @@ void free(void* ptr) {
 	memheader_t* curr;
 
 	if (heap_empty()) {
-		memlog(, "(!) Attempting to free from empty heap (addr@");
-		memlog(ptr, ptr);
-		memlog(ln, ").");
+		log_error(, "Attempting to free from empty heap (addr@");
+		_log(ptr, ptr);
+		_log(ln, ").");
 
 		return;
 	}
@@ -354,42 +358,42 @@ void free(void* ptr) {
 	curr = get_memheader_of(ptr);
 
 	if (!curr->active) {
-		memlog(, "(!) Double free (ptr@");
-		memlog(ptr, ptr);
-		memlog(ln, ").");
+		log_error(, "Double free (ptr@");
+		_log(ptr, ptr);
+		_log(ln, ").");
 
 		return;
 	}
 
-	memlog(, "(i) Freeing: ");
-	memlog(ptr, ptr);
-	memlog(, " (memheader@");
-	memlog(ptr, curr);
-	memlog(ln, ").");
+	mem_trace(, "Freeing: ", LOG_INFO);
+	_mem_trace(ptr, ptr);
+	_mem_trace(, " (memheader@");
+	_mem_trace(ptr, curr);
+	_mem_trace(ln, ").");
 
 	if (curr->next && curr->prev) {
-		memlog(ln, "   -> hole created");
+		_mem_trace(ln, "   -> hole created");
 
 		account_hole(total_block_size(curr));
 		curr->next->prev = curr->prev;
 		curr->prev->next = curr->next;
 	}
 	else if (curr->prev) {
-		memlog(ln, "   -> removed tail");
+		_mem_trace(ln, "   -> removed tail");
 
 		account_free(total_block_size(curr));
 		curr->prev->next = 0;
 		memlast = curr->prev;
 	}
 	else if (curr->next) {
-		memlog(ln, "   -> removed head");
+		_mem_trace(ln, "   -> removed head");
 
 		account_hole(total_block_size(curr));
 		curr->next->prev = 0;
 		memfirst = curr->next;
 	}
 	else {
-		memlog(ln, "   -> heap empty");
+		_mem_trace(ln, "   -> heap empty");
 
 		reset_heap();
 		alloc_count = 0;
