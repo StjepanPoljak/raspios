@@ -9,6 +9,9 @@
 #define println(string) print(string "\n\r")
 #define print64(val) print_hex(val, uart_write_char, 8)
 
+#define TRUE (uint8_t)1
+#define FALSE (uint8_t)0
+
 void uart_write_char(char);
 void print_string(const char*, void(*f)(char));
 void print_hex(reg_t, void(*f)(char), reg_t);

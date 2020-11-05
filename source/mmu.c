@@ -161,7 +161,7 @@ static uint8_t mmu_create_tcr_attrs(uint8_t va_space_bits,
 				    enum mmu_granule_size granule_size) {
 	uint32_t res = 0;
 
-	if (va_space_bits >= 32) {
+	if (va_space_bits <= 32) {
 		log_error(, "Invalid VA space size (");
 		_log(64, va_space_bits);
 		_log(ln, ")");
@@ -185,7 +185,7 @@ static uint8_t mmu_create_tcr_attrs(uint8_t va_space_bits,
 		return 4;
 	}
 
-	res |= va_space_bits;
+	res |= (64 - va_space_bits);
 	res |= (miss_attr << 7);
 	res |= (inner_attrs << 8);
 	res |= (outer_attrs << 10);
@@ -202,7 +202,7 @@ static uint8_t mmu_create_tcr_attrs(uint8_t va_space_bits,
 static reg_t mmu_create_tcr(uint16_t t0, uint16_t t1,
 			    enum mmu_ipa_size ipa_size) {
 
-	reg_t res = t0 | (t1 << 16) | (ipa_size << 32);
+	reg_t res = (reg_t)t0 | ((reg_t)t1 << 16) | ((reg_t)ipa_size << 32);
 
 	mmu_trace(, "Created TCR: ", LOG_INFO);
 	_mmu_trace(64, res);
@@ -211,11 +211,69 @@ static reg_t mmu_create_tcr(uint16_t t0, uint16_t t1,
 	return res;
 }
 
+static uint8_t mmu_is_valid_table(uint8_t table) {
+
+	if (table != 1 && table != 0) {
+		log_error(, "Invalid table selected (");
+		_log(64, table);
+		_log(ln, ").");
+
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+static uint8_t mmu_set_top_byte(reg_t* tcr, uint8_t table,
+				enum mmu_top_byte top_byte) {
+
+	uint8_t tb_pos;
+
+	if (!mmu_is_valid_table(table))
+		return 1;
+
+	tb_pos = table == 0 ? 37 : 38;
+
+	*tcr &= ~((reg_t)1 << tb_pos);
+	*tcr |= (reg_t)1 << tb_pos;
+
+	return 0;
+}
+
+static void mmu_set_asid(reg_t* tcr,
+			 enum mmu_asid_ttbr asid_ttbr,
+			 enum mmu_asid_size asid_size) {
+
+	*tcr &= ~((reg_t)1 << 36);
+	*tcr |= (reg_t)asid_size << 36;
+
+	*tcr &= ~((reg_t)1 << 22);
+	*tcr |= (reg_t)asid_ttbr << 22;
+
+	return;
+}
+
+static void mmu_save_tcr(reg_t tcr) {
+
+	__asm volatile(
+		"msr tcr_el1, %0;"
+		: // no output
+		: "r" (tcr)
+	);
+
+	mmu_trace(, "Saved TCR (", LOG_INFO);
+	_mmu_trace(64, tcr);
+	_mmu_trace(ln, ").");
+
+	return;
+}
+
 /* general */
 
 void mmu_init(void) {
 
 	uint8_t mair[8] = { 0 };
+	reg_t tcr;
 
 	mmu_trace(ln, "Initializing MMU.", LOG_INFO);
 
@@ -240,6 +298,39 @@ void mmu_init(void) {
 	mmu_add_device_memory(mair, 2, MMU_DEVICE_nGnRnE);
 
 	mmu_save_mair(mair);
+
+	tcr = mmu_create_tcr(
+		mmu_create_tcr_attrs(		// t0
+			39,
+			MMU_TRANSLATION_FAULT,
+			mmu_tlb_cacheable_attr(
+				MMU_WRITE_BACK,
+				MMU_WRITE_ALLOCATE),
+			mmu_tlb_cacheable_attr(
+				MMU_WRITE_BACK,
+				MMU_WRITE_ALLOCATE),
+			MMU_INNER_SHAREABLE,
+			MMU_GRANULE_4KB),
+		mmu_create_tcr_attrs(		// t1
+			39,
+			MMU_TRANSLATION_FAULT,
+			mmu_tlb_cacheable_attr(
+				MMU_WRITE_BACK,
+				MMU_WRITE_ALLOCATE),
+			mmu_tlb_cacheable_attr(
+				MMU_WRITE_BACK,
+				MMU_WRITE_ALLOCATE),
+			MMU_INNER_SHAREABLE,
+			MMU_GRANULE_4KB),
+		MMU_IPA_32BIT
+	);
+
+	mmu_set_top_byte(&tcr, 0, MMU_TOP_BYTE_IGNORED);
+	mmu_set_top_byte(&tcr, 1, MMU_TOP_BYTE_IGNORED);
+
+	mmu_set_asid(&tcr, MMU_ASID_TTBR1, MMU_ASID_8BIT);
+
+	mmu_save_tcr(tcr);
 
 	mmu_load_table("ttbr0_el1", "_ld_tt_l1_base");
 

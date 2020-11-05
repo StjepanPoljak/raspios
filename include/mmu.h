@@ -45,19 +45,34 @@ enum mmu_tlb_sh_attr {
 };
 
 enum mmu_granule_size {
-	MMU_4KB			= 0x0,
-	MMU_64KB		= 0x1,
-	MMU_16KB		= 0x2
+	MMU_GRANULE_4KB		= 0x0,
+	MMU_GRANULE_64KB	= 0x1,
+	MMU_GRANULE_16KB	= 0x2
 };
 
 enum mmu_ipa_size {
-	MMU_32BIT		= 0x0,
-	MMU_36BIT		= 0x1,
-	MMU_40BIT		= 0x2,
-	MMU_42BIT		= 0x3,
-	MMU_44BIT		= 0x4,
-	MMU_48BIT		= 0x5,
-	MMU_52BIT		= 0x6
+	MMU_IPA_32BIT		= 0x0,
+	MMU_IPA_36BIT		= 0x1,
+	MMU_IPA_40BIT		= 0x2,
+	MMU_IPA_42BIT		= 0x3,
+	MMU_IPA_44BIT		= 0x4,
+	MMU_IPA_48BIT		= 0x5,
+	MMU_IPA_52BIT		= 0x6
+};
+
+enum mmu_top_byte {
+	MMU_TOP_BYTE_USED	= 0x0,
+	MMU_TOP_BYTE_IGNORED	= 0x1
+};
+
+enum mmu_asid_ttbr {
+	MMU_ASID_TTBR0		= 0x0,
+	MMU_ASID_TTBR1		= 0x1
+};
+
+enum mmu_asid_size {
+	MMU_ASID_8BIT		= 0x0,
+	MMU_ASID_16BIT		= 0x1
 };
 
 /* MMU functions */
