@@ -157,7 +157,7 @@ static uint8_t mmu_create_tcr_attrs(uint8_t va_space_bits,
 				    enum mmu_tlb_miss_attr miss_attr,
 				    uint8_t inner_attrs,
 				    uint8_t outer_attrs,
-				    enum mmu_tlb_sh_attr sh_attr,
+				    enum mmu_sh_attr sh_attr,
 				    enum mmu_granule_size granule_size) {
 	uint32_t res = 0;
 
@@ -267,6 +267,52 @@ static void mmu_save_tcr(reg_t tcr) {
 
 	return;
 }
+
+/* Translation Table Entry */
+
+static uint8_t mmu_access_permission(enum mmu_ap_unprivileged apu, enum mmu_ap_privileged app) {
+
+	switch (apu) {
+	case MMU_NO_ACCESS_EL0:
+		return app == MMU_RW_EL123 ? 0x0 : 0x80;
+	case MMU_RW_EL0:
+		return 0x40;
+	case MMU_RO_EL0:
+		return 0xc0;
+	default:
+		break;
+	}
+
+	return 0x80;
+}
+
+static void mmu_set_tts1_attrs(reg_t* addr, uint8_t mair_index, uint8_t ns, uint8_t ap, enum mmu_sh_attr sh, enum mmu_ep ep) {
+
+	*addr |= ((reg_t)mair_index << 2);
+	*addr |= ((reg_t)ns << 5);
+	*addr |= (reg_t)ap;
+	*addr |= ((reg_t)sh << 8);
+	*addr |= ((reg_t)ep << 53);
+
+	return;
+}
+
+static void mmu_set_tts1_pa(reg_t* addr, enum mmu_granule_size gs, reg_t pa) {
+
+	switch (gs) {
+	case MMU_GRANULE_4KB:
+		*addr |= (pa << 12);
+	case MMU_GRANULE_16KB:
+		*addr |= (pa << 14);
+	case MMU_GRANULE_64KB:
+		*addr |= (pa << 16);
+	default:
+		break;
+	}
+
+	return;
+}
+
 
 /* general */
 
