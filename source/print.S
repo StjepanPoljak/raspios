@@ -126,16 +126,16 @@ print_string_loop:
 
 .globl newline
 newline:
-	sub	sp, sp, #(16*1)
+	sub	sp, sp, #16
 	str	x30, [sp]
 
-	adr	x0, newl
-	adr	x1, uart_write_char
-	bl	print_string
+	ldr	w0, ='\n'
+	bl	uart_write_char
+
+	ldr	w0, ='\r'
+	bl	uart_write_char
 
 	ldr	x30, [sp]
-	add	sp, sp, #(16*1)
+	add	sp, sp, #16
 
 	ret
-
-newl: .asciz "\n\r"

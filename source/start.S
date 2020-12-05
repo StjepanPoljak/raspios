@@ -49,21 +49,11 @@ el2_entry:
 
 el1_entry:
 
+	irq_vector_el 1
+
 	/* setup early stack */
 	adr	x1, _ld_early_stack
 	mov	sp, x1
-
-	bl	uart_init
-
-	adr	x0, test_string
-	adr	x1, uart_write_char
-	bl	print_string
-
-	irq_vector_el 1
-
-	adr	x0, irqs_init_msg
-	adr	x1, uart_write_char
-	bl	print_string
 
 	adr	x0, _ld_bss_start
 	adr	x1, _ld_bss_end
@@ -72,6 +62,28 @@ el1_entry:
 	adr	x0, _ld_tt_l1_base
 	adr	x1, _ld_tt_l1_base_end
 	bl	memzero
+
+	bl	uart_init
+
+	adr	x0, _ld_early_stack
+	adr	x1, uart_write_char
+	mov	x2, #8
+	bl	print_hex_raw
+
+	bl newline
+
+	ldr	x0, =_ld_early_stack
+	adr	x1, uart_write_char
+	mov	x2, #8
+	bl	print_hex_raw
+
+	adr	x0, test_string
+	adr	x1, uart_write_char
+	bl	print_string
+
+	adr	x0, irqs_init_msg
+	adr	x1, uart_write_char
+	bl	print_string
 
 	bl	timer_init
 
@@ -113,7 +125,6 @@ hang:
 .section ".data"
 
 test_string: .asciz "\n\r\n\rHello.\n\rHow are you?\n\rI am under the water.\n\rPlease help me.\n\r\n\r\0"
-
 curr_el_msg: .asciz " * CurrentEL: \0"
 irqs_init_msg: .asciz "(i) IRQ vector loaded.\n\r\0"
 time_init_msg: .asciz "(i) Timer initialized.\n\r\0"

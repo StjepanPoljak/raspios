@@ -12,7 +12,7 @@
 #define TRUE (uint8_t)1
 #define FALSE (uint8_t)0
 
-void uart_write_char(char);
+extern void uart_write_char(char);
 void print_string(const char*, void(*f)(char));
 void print_hex(reg_t, void(*f)(char), reg_t);
 void newline();

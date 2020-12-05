@@ -2,7 +2,7 @@ PROJ = kernel8
 CROSS_COMPILE = aarch64-none-elf
 CFLAGS = -Wall -ffreestanding -nostdinc -nostdlib -nostartfiles -Iinclude
 LDFLAGS = -nostdlib -nostartfiles
-OPTIONS ?= -DBOOT_ADDR=0x01000000 -DSTACK_TOP=0x30000000 -DSECURE=0
+OPTIONS ?= -DVA_BITS=39 -DSECURE=0
 C_INCLUDE_PATH ?= cc/aarch64-none-elf/include
 
 srcdir = source

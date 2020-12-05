@@ -1,8 +1,9 @@
 EARLY_STACK_SIZE = 0x1000;
+VA_START = (1 << VA_BITS) * ((1 << (64 - VA_BITS)) - 1);
 
 SECTIONS
 {
-	. = BOOT_ADDR;
+	. = VA_START;
 	.text.boot : { *(.text.boot) }
 	.data : { *(.data, .rodata) }
 	. += EARLY_STACK_SIZE;

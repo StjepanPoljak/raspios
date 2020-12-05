@@ -8,7 +8,7 @@ int main(int argc, const char* argv[]) {
 	reg_t* var3;
 	reg_t* var4;
 
-	mmu_init();
+	//mmu_init();
 
 	println("Welcome to the wonderful world of C!");
 

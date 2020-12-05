@@ -141,51 +141,17 @@ static uint8_t mmu_tlb_cacheable_attr(
 	else if (wp == MMU_WRITE_BACK && wa == MMU_WRITE_NO_ALLOCATE)
 		return 0x3;
 
-	else {
-		log_error(ln, "Invalid TLB cache attribute.");
-		_mmu_trace(, "  -> wp=");
-		_mmu_trace(64, wp);
-		_mmu_trace(, " wa=");
-		_mmu_trace(64, wa);
-		_mmu_trace(ln, "");
-	}
-
 	return 0x0;
 }
 
-static uint8_t mmu_create_tcr_attrs(uint8_t va_space_bits,
-				    enum mmu_tlb_miss_attr miss_attr,
+static uint8_t mmu_create_tcr_attrs(enum mmu_tlb_miss_attr miss_attr,
 				    uint8_t inner_attrs,
 				    uint8_t outer_attrs,
 				    enum mmu_sh_attr sh_attr,
 				    enum mmu_granule_size granule_size) {
 	uint32_t res = 0;
 
-	if (va_space_bits <= 32) {
-		log_error(, "Invalid VA space size (");
-		_log(64, va_space_bits);
-		_log(ln, ")");
-
-		return 2;
-	}
-
-	if (inner_attrs >= 4) {
-		log_error(, "Invalid IRGN bits (");
-		_log(64, inner_attrs);
-		_log(ln, ")");
-
-		return 3;
-	}
-
-	if (outer_attrs >= 4) {
-		log_error(, "Invalid ORGN bits (");
-		_log(64, outer_attrs);
-		_log(ln, ")");
-
-		return 4;
-	}
-
-	res |= (64 - va_space_bits);
+	res |= (64 - VA_BITS);
 	res |= (miss_attr << 7);
 	res |= (inner_attrs << 8);
 	res |= (outer_attrs << 10);
@@ -347,8 +313,7 @@ void mmu_init(void) {
 
 	tcr = mmu_create_tcr(
 		mmu_create_tcr_attrs(		// t0
-			39,
-			MMU_TRANSLATION_FAULT,
+			MMU_NO_FAULT,
 			mmu_tlb_cacheable_attr(
 				MMU_WRITE_BACK,
 				MMU_WRITE_ALLOCATE),
@@ -358,8 +323,7 @@ void mmu_init(void) {
 			MMU_INNER_SHAREABLE,
 			MMU_GRANULE_4KB),
 		mmu_create_tcr_attrs(		// t1
-			39,
-			MMU_TRANSLATION_FAULT,
+			MMU_NO_FAULT,
 			mmu_tlb_cacheable_attr(
 				MMU_WRITE_BACK,
 				MMU_WRITE_ALLOCATE),
