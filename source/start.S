@@ -1,8 +1,25 @@
 #include "config.h"
 
-.section ".text.boot"
+.macro early_print addr f
+	adr	x0, \addr
+	adr	x1, \f
+	bl	print_string
+.endm
 
-.globl _ld_heap
+.macro early_print_addr addr f size
+	adr	x0, \addr
+	adr	x1, \f
+	mov	x2, #\size
+	bl	print_hex
+.endm
+
+.macro early_print_x0 f size
+	adr	x1, \f
+	mov	x2, #\size
+	bl	print_hex
+.endm
+
+.section ".text.boot"
 
 .globl _start
 _start:
@@ -45,6 +62,14 @@ el2_entry:
 
 	hcr_el2	_IRQ_NOROUTE _FIQ_NOROUTE
 
+	mrs	x0, midr_el1
+	msr	vpidr_el2, x0
+
+	mrs	x0, mpidr_el1
+	msr	vmpidr_el2, x0
+
+	msr	vttbr_el2, xzr
+
 	enter_el 2 1 el1_entry
 
 el1_entry:
@@ -52,38 +77,27 @@ el1_entry:
 	irq_vector_el 1
 
 	/* setup early stack */
-	adr	x1, _ld_early_stack
+	adr	x1, _ld_stack
 	mov	sp, x1
 
 	adr	x0, _ld_bss_start
 	adr	x1, _ld_bss_end
 	bl	memzero
 
-	adr	x0, _ld_tt_l1_base
-	adr	x1, _ld_tt_l1_base_end
-	bl	memzero
-
 	bl	uart_init
 
-	adr	x0, _ld_early_stack
-	adr	x1, uart_write_char
-	mov	x2, #8
-	bl	print_hex_raw
+	early_print test_string uart_write_char
+
+	early_print paddr_msg uart_write_char
+	adr	x0, _start
+	early_print_x0 uart_write_char 8
 
 	bl newline
 
-	ldr	x0, =_ld_early_stack
-	adr	x1, uart_write_char
-	mov	x2, #8
-	bl	print_hex_raw
+	early_print stack_paddr_msg uart_write_char
+	early_print_addr _ld_stack uart_write_char 8
 
-	adr	x0, test_string
-	adr	x1, uart_write_char
-	bl	print_string
-
-	adr	x0, irqs_init_msg
-	adr	x1, uart_write_char
-	bl	print_string
+	bl newline
 
 	bl	timer_init
 
@@ -100,13 +114,8 @@ el1_entry:
 	/* enable interrupts */
 	msr	daifclr, #2
 
-	adr	x0, time_init_msg
-	adr	x1, uart_write_char
-	bl	print_string
-
-	adr	x0, curr_el_msg
-	adr	x1, uart_write_char
-	bl	print_string
+	early_print time_init_msg uart_write_char
+	early_print curr_el_msg uart_write_char
 
 	curr_el_to x0
 	adr	x1, uart_write_char
@@ -124,7 +133,16 @@ hang:
 
 .section ".data"
 
-test_string: .asciz "\n\r\n\rHello.\n\rHow are you?\n\rI am under the water.\n\rPlease help me.\n\r\n\r\0"
-curr_el_msg: .asciz " * CurrentEL: \0"
-irqs_init_msg: .asciz "(i) IRQ vector loaded.\n\r\0"
-time_init_msg: .asciz "(i) Timer initialized.\n\r\0"
+test_string:
+	.asciz "\n\r\n\rHello.\n\rHow are you?\n\rI am under the water.\n\rPlease help me.\n\r\n\r"
+curr_el_msg:
+	.asciz " * CurrentEL: "
+irqs_init_msg:
+	.asciz "(i) IRQ vector loaded.\n\r"
+time_init_msg:
+	.asciz "(i) Timer initialized.\n\r"
+paddr_msg:
+	.asciz "(i) Loaded at physical address: "
+stack_paddr_msg:
+	.asciz "(i) Stack physical address: "
+

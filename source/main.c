@@ -1,4 +1,4 @@
-#include "mmu.h"
+#include <mmu/mmu.h>
 #include "mem.h"
 
 int main(int argc, const char* argv[]) {
@@ -8,13 +8,11 @@ int main(int argc, const char* argv[]) {
 	reg_t* var3;
 	reg_t* var4;
 
-	//mmu_init();
-
 	println("Welcome to the wonderful world of C!");
 
-	println("");
-
 	mem_init();
+
+	mmu_init();
 
 	var1 = (reg_t*)alloc_fast(17);
 	var2 = (reg_t*)alloc_fast(12);

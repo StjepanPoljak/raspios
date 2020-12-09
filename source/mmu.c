@@ -1,4 +1,7 @@
-#include "mmu.h"
+#include <mmu/mmu.h>
+#include <mmu/mair.h>
+#include <mmu/tcr.h>
+#include <mem.h>
 
 #include <stdint.h>
 
@@ -16,6 +19,10 @@
 #define mmu_trace(suffix, value, level) ;;
 #endif
 
+#define pre_granule(s, t) TCR_TT ## t ## _GRANULE_ ## s
+#define eval(s, t) pre_granule(s, t)
+#define granule(t) eval(CONFIG_GRANULE_SIZE, t)
+
 #define mmu_load_table(TABLE_MSR, TABLE_BASE) \
 do { \
 	mmu_trace(ln, "Loading " TABLE_MSR "@" TABLE_BASE, LOG_INFO); \
@@ -25,83 +32,16 @@ do { \
 		); \
 } while(0);
 
-static uint8_t mmu_add_device_memory(uint8_t mair[8], uint8_t index,
-				     enum mmu_device_attr dattr) {
+static void mmu_set_mair(void) {
 
-	if (index >= 8 || index < 0) {
-		log_error(, "Invalid MAIR index (");
-		_log(64, index);
-		_log(ln, ") passed to mmu_add_device_memory()");
-
-		return 1;
-	}
-
-	mair[index] = (uint8_t)dattr;
-
-	mmu_trace(, "Created device (", LOG_INFO);
-	_mmu_trace(64, (uint8_t)dattr);
-	_mmu_trace(ln, ").");
-
-	return 0;
-}
-
-static uint8_t mmu_create_cacheable(enum mmu_trans_attr trans,
-				    enum mmu_write_policy wp,
-				    enum mmu_read_alloc ra,
-				    enum mmu_write_alloc wa) {
-
-	uint8_t res = trans | wp | ra | wa;
-
-	mmu_trace(, "Created cacheable (", LOG_INFO);
-	_mmu_trace(64, res);
-	_mmu_trace(ln, ").");
-
-	return res;
-}
-
-static uint8_t mmu_create_non_cacheable(void) {
-
-	uint8_t res = 0x4;
-
-	mmu_trace(, "Created non-cacheable (", LOG_INFO);
-	_mmu_trace(64, res);
-	_mmu_trace(ln, ").");
-
-	return res;
-}
-
-static uint8_t mmu_add_normal_memory(uint8_t mair[8], uint8_t index,
-				     uint8_t inner, uint8_t outer) {
-
-	if (index >= 8 || index < 0) {
-		log_error(, "Invalid MAIR index (");
-		_log(64, index);
-		_log(ln, ") passed to mmu_add_normal_memory()");
-
-		return 1;
-	}
-
-	mair[index] = inner | (outer << 4);
-
-	mmu_trace(, "Merged normal memory (", LOG_INFO);
-	_mmu_trace(64, mair[index]);
-	_mmu_trace(ln, ").");
-
-	return 0;
-}
-
-static void mmu_save_mair(uint8_t mair[8]) {
-
-#ifdef MMU_TRACE
-	reg_t mair_reg = 0;
-	uint8_t i = 0;
-	for (i = 0; i < 8; i++)
-		mair_reg |= (mair[i] << (i * 8));
+	reg_t mair = (MAIR_DEVICE << (MAIR_DEVICE_INDEX * 8)) |
+		     (MAIR_CACHEABLE << (MAIR_CACHEABLE_INDEX * 8)) |
+		     (MAIR_NON_CACHEABLE << (MAIR_NON_CACHEABLE_INDEX * 8));
 
 	mmu_trace(, "Saving MAIR (", LOG_INFO);
-	_mmu_trace(64, mair_reg);
+	_mmu_trace(64, mair);
 	_mmu_trace(ln, ").");
-#endif
+	
 	__asm volatile(
 		"ldr x0, [%0];"
 		"msr mair_el1, x0;"
@@ -113,129 +53,107 @@ static void mmu_save_mair(uint8_t mair[8]) {
 
 /* TCR-related */
 
-void mmu_invalidate_tlbs(void) {
+static void mmu_set_tcr(void) {
 
-	__asm volatile(
-		"tlbi alle3;"
-		"dsb sy;"
-		"isb");
+	reg_t tcr = 0;
 
-	return;
-}
+	/* kernel-space */
+	tcr |= (64 - CONFIG_VA_BITS);
+	tcr |= TCR_MISS_NO_FAULT;
+	tcr |= (TCR_CACHEABLE_WB_WA << 8);
+	tcr |= (TCR_CACHEABLE_WB_WA << 10);
+	tcr |= TCR_INNER_SHAREABLE;
+	tcr <<= 16; /* it's important to keep these
+		     * after the shift! */
+	tcr |= (TCR_TOP_BYTE_USED << 1);
+	tcr |= granule(1);
 
-static uint8_t mmu_tlb_non_cacheable_attr(void) {
 
-	return 0x0;
-}
+	/* user-space */
+	tcr |= (64 - CONFIG_VA_BITS);
+	tcr |= TCR_MISS_NO_FAULT;
+	tcr |= (TCR_CACHEABLE_WB_WA << 8);
+	tcr |= (TCR_CACHEABLE_WB_WA << 10);
+	tcr |= TCR_INNER_SHAREABLE;
+	tcr |= granule(0);
+	tcr |= TCR_TOP_BYTE_USED;
 
-static uint8_t mmu_tlb_cacheable_attr(
-		enum mmu_write_policy wp,
-		enum mmu_write_alloc wa) {
-
-	if (wp == MMU_WRITE_BACK && wa == MMU_WRITE_ALLOCATE)
-		return 0x1;
-
-	else if (wp == MMU_WRITE_THROUGH && wa == MMU_WRITE_NO_ALLOCATE)
-		return 0x2;
-
-	else if (wp == MMU_WRITE_BACK && wa == MMU_WRITE_NO_ALLOCATE)
-		return 0x3;
-
-	return 0x0;
-}
-
-static uint8_t mmu_create_tcr_attrs(enum mmu_tlb_miss_attr miss_attr,
-				    uint8_t inner_attrs,
-				    uint8_t outer_attrs,
-				    enum mmu_sh_attr sh_attr,
-				    enum mmu_granule_size granule_size) {
-	uint32_t res = 0;
-
-	res |= (64 - VA_BITS);
-	res |= (miss_attr << 7);
-	res |= (inner_attrs << 8);
-	res |= (outer_attrs << 10);
-	res |= (sh_attr << 12);
-	res |= (granule_size << 14);
-
-	mmu_trace(, "Created TCR table attribute: ", LOG_INFO);
-	_mmu_trace(64, res);
-	_mmu_trace(ln, "");
-
-	return res;
-}
-
-static reg_t mmu_create_tcr(uint16_t t0, uint16_t t1,
-			    enum mmu_ipa_size ipa_size) {
-
-	reg_t res = (reg_t)t0 | ((reg_t)t1 << 16) | ((reg_t)ipa_size << 32);
-
-	mmu_trace(, "Created TCR: ", LOG_INFO);
-	_mmu_trace(64, res);
-	_mmu_trace(ln, "");
-
-	return res;
-}
-
-static uint8_t mmu_is_valid_table(uint8_t table) {
-
-	if (table != 1 && table != 0) {
-		log_error(, "Invalid table selected (");
-		_log(64, table);
-		_log(ln, ").");
-
-		return FALSE;
-	}
-
-	return TRUE;
-}
-
-static uint8_t mmu_set_top_byte(reg_t* tcr, uint8_t table,
-				enum mmu_top_byte top_byte) {
-
-	uint8_t tb_pos;
-
-	if (!mmu_is_valid_table(table))
-		return 1;
-
-	tb_pos = table == 0 ? 37 : 38;
-
-	*tcr &= ~((reg_t)1 << tb_pos);
-	*tcr |= (reg_t)1 << tb_pos;
-
-	return 0;
-}
-
-static void mmu_set_asid(reg_t* tcr,
-			 enum mmu_asid_ttbr asid_ttbr,
-			 enum mmu_asid_size asid_size) {
-
-	*tcr &= ~((reg_t)1 << 36);
-	*tcr |= (reg_t)asid_size << 36;
-
-	*tcr &= ~((reg_t)1 << 22);
-	*tcr |= (reg_t)asid_ttbr << 22;
-
-	return;
-}
-
-static void mmu_save_tcr(reg_t tcr) {
+	/* common */
+	tcr |= TCR_IPA_32BIT;
+	tcr |= TCR_ASID_TTBR0;
+	tcr |= TCR_ASID_8BIT;
 
 	__asm volatile(
 		"msr tcr_el1, %0;"
+		"isb;"
 		: // no output
 		: "r" (tcr)
 	);
 
-	mmu_trace(, "Saved TCR (", LOG_INFO);
-	_mmu_trace(64, tcr);
-	_mmu_trace(ln, ").");
+	invalidate_tlbs_el(1);
 
+	mmu_trace(, "Set TCR: ", LOG_INFO);
+	_mmu_trace(64, tcr);
+	_mmu_trace(ln, "");
+
+}
+
+/* PTE-related */
+
+#define for_each_table_entry(table, entry, skip) \
+	for (entry = table; entry < table + 512; entry += skip)
+
+#define pentry_t uint64_t
+#define ptable_t pentry_t*
+
+void dump_table(ptable_t table) {
+	//pentry_t* entry;
+
+	dump_mem((void*)table, 512, 8);
+
+//	for_each_table_entry(table, entry, 2) {
+//		print64_raw(raw_ptr(entry));
+//		print(": ");
+//		print64_raw(*entry);
+//		print(" ");
+//		print64_raw(*(entry + 1));
+//		newline();
+//	}
+}
+
+extern void memzero(addr_t, addr_t);
+
+ptable_t create_table(void) {
+	ptable_t table;
+	entry_t* entry;
+	uint16_t count = 0;
+
+	table = (ptable_t)alloc_fast_align(4096, 4096);
+
+	for_each_table_entry(table, entry, 1) {
+		*entry = count++;
+	}
+
+	//memzero(raw_ptr(table), raw_ptr(table) + 4096);
+
+	return table;
+}
+
+/* 0 - 512GB, 1 - 1GB, 2 - 2MB, 3 - 4kB
+ * level 0 can only point to a next level 1 entry
+ * level 3 cannot point to another table and can only
+ * output block address */
+
+#define PT_BLOCK_ENTRY	0x1	/* 1, 2 */
+#define PT_TABLE_ENTRY	0x3	/* 1, 2 */
+#define PT_TABLE_DESC	0x3	/* 0, 1, 2 */
+#define PT_INVALID	0x0	/* 0, 1, 2, 3 */
+
+void set_entry(entry_t* table, uint16_t entry_no, entry_t entry) {
 	return;
 }
 
-/* Translation Table Entry */
-
+/*
 static uint8_t mmu_access_permission(enum mmu_ap_unprivileged apu, enum mmu_ap_privileged app) {
 
 	switch (apu) {
@@ -262,87 +180,24 @@ static void mmu_set_tts1_attrs(reg_t* addr, uint8_t mair_index, uint8_t ns, uint
 
 	return;
 }
-
-static void mmu_set_tts1_pa(reg_t* addr, enum mmu_granule_size gs, reg_t pa) {
-
-	switch (gs) {
-	case MMU_GRANULE_4KB:
-		*addr |= (pa << 12);
-	case MMU_GRANULE_16KB:
-		*addr |= (pa << 14);
-	case MMU_GRANULE_64KB:
-		*addr |= (pa << 16);
-	default:
-		break;
-	}
-
-	return;
-}
-
+*/
 
 /* general */
 
 void mmu_init(void) {
-
-	uint8_t mair[8] = { 0 };
-	reg_t tcr;
+	ptable_t table;
 
 	mmu_trace(ln, "Initializing MMU.", LOG_INFO);
 
-	mmu_add_normal_memory(mair, 0,
-		mmu_create_cacheable(		// inner
-			MMU_TRANSIENT,
-			MMU_WRITE_BACK,
-			MMU_READ_ALLOCATE,
-			MMU_WRITE_ALLOCATE),
-		mmu_create_cacheable(		// outer
-			MMU_TRANSIENT,
-			MMU_WRITE_BACK,
-			MMU_READ_ALLOCATE,
-			MMU_WRITE_ALLOCATE)
-	);
+	mmu_set_mair();
+	mmu_set_tcr();
 
-	mmu_add_normal_memory(mair, 1,
-		mmu_create_non_cacheable(),	// inner
-		mmu_create_non_cacheable()	// outer
-	);
+	table = create_table();
+	dump_table(table);
 
-	mmu_add_device_memory(mair, 2, MMU_DEVICE_nGnRnE);
-
-	mmu_save_mair(mair);
-
-	tcr = mmu_create_tcr(
-		mmu_create_tcr_attrs(		// t0
-			MMU_NO_FAULT,
-			mmu_tlb_cacheable_attr(
-				MMU_WRITE_BACK,
-				MMU_WRITE_ALLOCATE),
-			mmu_tlb_cacheable_attr(
-				MMU_WRITE_BACK,
-				MMU_WRITE_ALLOCATE),
-			MMU_INNER_SHAREABLE,
-			MMU_GRANULE_4KB),
-		mmu_create_tcr_attrs(		// t1
-			MMU_NO_FAULT,
-			mmu_tlb_cacheable_attr(
-				MMU_WRITE_BACK,
-				MMU_WRITE_ALLOCATE),
-			mmu_tlb_cacheable_attr(
-				MMU_WRITE_BACK,
-				MMU_WRITE_ALLOCATE),
-			MMU_INNER_SHAREABLE,
-			MMU_GRANULE_4KB),
-		MMU_IPA_32BIT
-	);
-
-	mmu_set_top_byte(&tcr, 0, MMU_TOP_BYTE_IGNORED);
-	mmu_set_top_byte(&tcr, 1, MMU_TOP_BYTE_IGNORED);
-
-	mmu_set_asid(&tcr, MMU_ASID_TTBR1, MMU_ASID_8BIT);
-
-	mmu_save_tcr(tcr);
-
-	mmu_load_table("ttbr0_el1", "_ld_tt_l1_base");
+	//mmu_load_table("ttbr0_el1", "_ld_tt_l1_base");
+	
+	sync_all();
 
 	return;
 }

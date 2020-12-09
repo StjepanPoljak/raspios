@@ -1,3 +1,18 @@
+#include "config.h"
+
+/* void */
+.globl mmu_enable_el1
+mmu_enable_el1:
+	sub	sp, sp, #0x16
+	str	x30, [sp]
+
+	set_mmu_el 1 _MMU_ENABLED
+	isb
+
+	ldr	x30, [sp]
+	add	sp, sp, #0x16
+	ret
+
 .globl memzero
 /* x0 - start address
  * x1 - end address */

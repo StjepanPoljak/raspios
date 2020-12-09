@@ -4,7 +4,13 @@
 #include "bridge.h"
 
 #define mem_size_t uint16_t
+
+/* don't use addr_t too much, this is
+ * for raw pointers, so we override the
+ * pointer offsets that C compiler
+ * generates; also it's arch-specific */
 #define addr_t uint64_t
+
 #define align_t uint16_t
 
 #define raw_ptr(ptr) (addr_t)(ptr)
@@ -42,6 +48,11 @@ mem_size_t pad(mem_size_t, align_t);
 
 /* Dumps memory accounting. */
 void dump_mem_accounting(void);
+
+/* Dumps memory */
+void dump_mem(void*, unsigned int, unsigned int);
+
+void* alloc_fast_align(mem_size_t, addr_t);
 
 /* Fast allocation appends a memory
  * block to heap tail. */

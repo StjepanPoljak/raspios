@@ -2,7 +2,7 @@ PROJ = kernel8
 CROSS_COMPILE = aarch64-none-elf
 CFLAGS = -Wall -ffreestanding -nostdinc -nostdlib -nostartfiles -Iinclude
 LDFLAGS = -nostdlib -nostartfiles
-OPTIONS ?= -DVA_BITS=39 -DSECURE=0
+OPTIONS = $(shell awk 'BEGIN{ opts="" } { opts = opts (opts == "" ? "" : OFS) "-D" $$0 } END { print opts }' config.txt)
 C_INCLUDE_PATH ?= cc/aarch64-none-elf/include
 
 srcdir = source

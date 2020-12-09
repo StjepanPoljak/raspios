@@ -8,13 +8,15 @@
 #define print(string) print_string(string, uart_write_char)
 #define println(string) print(string "\n\r")
 #define print64(val) print_hex(val, uart_write_char, 8)
+#define print64_raw(val) print_hex_raw(val, uart_write_char, 8)
 
 #define TRUE (uint8_t)1
 #define FALSE (uint8_t)0
 
-extern void uart_write_char(char);
+void uart_write_char(char);
 void print_string(const char*, void(*f)(char));
 void print_hex(reg_t, void(*f)(char), reg_t);
+void print_hex_raw(reg_t, void(*f)(char), reg_t);
 void newline();
 
 #endif

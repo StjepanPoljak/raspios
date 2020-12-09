@@ -15,7 +15,7 @@ static mem_size_t hole_count;
 #define MEM_TESTS
 
 #define DEFAULT_ALIGN 8
-#define pad_default(size) pad(size, DEFAULT_ALIGN)
+#define align_default(size) align(size, DEFAULT_ALIGN)
 
 #ifdef MEM_TRACE
 #define _mem_trace(suffix, value) print ## suffix(value)
@@ -29,21 +29,24 @@ reg_t* heap;
 
 /* pad and align functions */
 
-mem_size_t pad(mem_size_t ms, align_t algn) {
-
-	if ((((align_t)ms) % algn) == 0)
-		return ms;
-	else
-		return ((((align_t)ms) / algn) + 1) * algn;
-}
+#define align(addr, algn) \
+	((algn != 1) && (addr % (addr_t)algn) \
+	? ((addr & ~((addr_t)(algn - 1))) + algn) \
+	: addr)
 
 static mem_size_t memheader_size(void) {
 
 	static mem_size_t cache = 0;
 
-	if (!cache)
-		cache = pad((mem_size_t)(sizeof(memheader_t)), DEFAULT_ALIGN);
-
+	if (!cache) {
+		cache = align_default((mem_size_t)(sizeof(memheader_t)));
+		mem_trace(, "Allocated memheader_size cache@", LOG_INFO);
+		_mem_trace(ptr, raw_ptr(&cache));
+		_mem_trace(ln, "");
+		_mem_trace(, "   -> cache=");
+		_mem_trace(64, (uint64_t)cache);
+		_mem_trace(ln, "");
+	}
 	return cache;
 }
 
@@ -68,11 +71,11 @@ static void pad_tests(void) {
 	uint16_t res[10] = { 8, 8, 16, 16, 24, 32, 32, 32, 104, 1000 };
 	uint8_t i;
 
-	log_test(ln, "Starting pad() unit test.");
+	log_test(ln, "Starting align() unit test.");
 
 	for (i = 0; i < 10; i++)
-		if (pad(vec[i], 8) != res[i]) {
-			log_fail(ln, "Inconsistency detected in pad().");
+		if (align(vec[i], 8) != res[i]) {
+			log_fail(ln, "Inconsistency detected in align().");
 			_mem_trace(, " -> invalid alignment at i=");
 			_mem_trace(64, i);
 			_mem_trace(ln, "");
@@ -80,7 +83,7 @@ static void pad_tests(void) {
 			return;
 		}
 
-	log_test(ln, "Unit test for pad() passed.");
+	log_test(ln, "Unit test for align() passed.");
 
 	return;
 }
@@ -95,6 +98,69 @@ static void static_variable_integrity_test(void) {
 	return;
 }
 #endif
+
+/* debug help */
+
+void dump_mem(void* start, unsigned int count, unsigned int cols) {
+	uint64_t* i;
+	uint64_t* end;
+	uint8_t remainder;
+	unsigned int col;
+
+	remainder = count % cols;
+
+	if (remainder) {
+		end = start + (count - remainder) * sizeof(start);
+	}
+	else {
+		end = start + count * sizeof(start);
+	}
+
+	for (i = (uint64_t*)start; i < end; i += cols) {
+		print64_raw(raw_ptr(i));
+		print(": ");
+
+		for (col = 0; col < cols; col++) {
+			print64_raw(*(i + col));
+
+			if (col < cols - 1)
+				print(" ");
+		}
+		newline();
+	}
+
+	if (remainder) {
+		print64_raw(raw_ptr(i));
+		print(": ");
+
+		for (i = end; i < end + remainder; i += 1) {
+			//i = (uint64_t*)start + (count - 1) * sizeof(start);
+			print64_raw(*i);
+			if (i < end + remainder)
+				print(" ");
+		}
+		newline();
+	}
+}
+
+void dump_mem_accounting(void) {
+
+	log_info(ln, "Dumping memory accounting data:");
+	_log(, "   -> alloc_count = ");
+	_log(64, alloc_count);
+	_log(ln, "");
+	_log(, "   -> alloc_size = ");
+	_log(64, alloc_size);
+	_log(ln, "");
+	_log(, "   -> hole_count = ");
+	_log(64, hole_count);
+	_log(ln, "");
+	_log(, "   -> hole_size = ");
+	_log(64, hole_size);
+	_log(ln, "");
+
+	return;
+}
 
 /* init functions */
 
@@ -168,25 +234,6 @@ static void account_slow(mem_size_t ms) {
 	return;
 }
 
-void dump_mem_accounting(void) {
-
-	log_info(ln, "Dumping memory accounting data:");
-	_log(, "   -> alloc_count = ");
-	_log(64, alloc_count);
-	_log(ln, "");
-	_log(, "   -> alloc_size = ");
-	_log(64, alloc_size);
-	_log(ln, "");
-	_log(, "   -> hole_count = ");
-	_log(64, hole_count);
-	_log(ln, "");
-	_log(, "   -> hole_size = ");
-	_log(64, hole_size);
-	_log(ln, "");
-
-	return;
-}
-
 /* fast allocation */
 
 static mem_size_t total_block_size(memheader_t* mh) {
@@ -195,6 +242,23 @@ static mem_size_t total_block_size(memheader_t* mh) {
 }
 
 void* alloc_fast(mem_size_t bsize) {
+
+	return alloc_fast_align(bsize, 0x1);
+}
+
+memheader_t* align_data_after(memheader_t* last, addr_t align) {
+	memheader_t* align_test;
+
+	align_test = (memheader_t*)align(raw_ptr(last), align);
+	while (raw_ptr(align_test) - memheader_size()
+		< raw_ptr(last) + total_block_size(last))
+
+		align_test = (memheader_t*)(raw_ptr(align_test) + align);
+
+	return (memheader_t*)(raw_ptr(align_test) - memheader_size());
+}
+
+void* alloc_fast_align(mem_size_t bsize, addr_t align) {
 
 	memheader_t* new_block;
 	void* ret;
@@ -207,19 +271,25 @@ void* alloc_fast(mem_size_t bsize) {
 		_mem_trace(, "   -> memlast@");
 		_mem_trace(ptr, memlast);
 		_mem_trace(ln, "");
-		new_block = (memheader_t*)(raw_ptr(memlast)
-			    + total_block_size(memlast));
+
+		if (align != 0x1)
+			new_block = align_data_after(memlast, align);
+		else
+			new_block = (memheader_t*)(raw_ptr(memlast)
+				    + total_block_size(memlast));
 		memlast->next = new_block;
 	}
 	else {
 		_mem_trace(ln, "   -> first allocation (fast) in heap");
+		if (align != 0x1)
+			memfirst = align_data_after(memfirst, align);
 		new_block = memfirst;
 	}
 
 	*new_block = (memheader_t){
 		.next = 0,
 		.prev = memlast != 0 ? memlast : 0,
-		.block_size = pad(bsize, DEFAULT_ALIGN),
+		.block_size = align(bsize, DEFAULT_ALIGN),
 		.active = 1
 	};
 
@@ -252,14 +322,14 @@ static void* insert(mem_size_t ms, addr_t addr,
 
 	if (next)
 		next->prev = new_block;
-	
+
 	if (prev)
 		prev->next = new_block;
 
 	*new_block = (memheader_t){
 		.next = next,
 		.prev = prev,
-		.block_size = pad(ms, DEFAULT_ALIGN),
+		.block_size = align_default(ms),
 		.active = 1
 	};
 
@@ -278,7 +348,19 @@ static void* insert(mem_size_t ms, addr_t addr,
 
 static memheader_t* get_memheader_of(void* ptr) {
 
-	return (memheader_t*)(raw_ptr(ptr) - memheader_size());
+	memheader_t* res = (memheader_t*)(raw_ptr(ptr) - memheader_size());
+
+	_mem_trace(, "   -> memheader_of(");
+	_mem_trace(ptr, raw_ptr(ptr));
+	_mem_trace(, ")@");
+	_mem_trace(ptr, raw_ptr(res));
+	_mem_trace(ln, "");
+	_mem_trace(, "   -> memheader_size=");
+	_mem_trace(64, memheader_size());
+	_mem_trace(ln, "");
+
+	return res;
+	
 }
 
 void* alloc_slow(mem_size_t size, enum alloc_slow_mode mode) {
@@ -293,7 +375,7 @@ void* alloc_slow(mem_size_t size, enum alloc_slow_mode mode) {
 	_mem_trace(64, size);
 	_mem_trace(ln, " bytes (slow).");
 
-	tbsize = memheader_size() + pad(size, DEFAULT_ALIGN);
+	tbsize = memheader_size() + align_default(size);
 	ret = 0;
 
 	if (mode == ALLOC_SLOW_UP) {
@@ -307,8 +389,12 @@ void* alloc_slow(mem_size_t size, enum alloc_slow_mode mode) {
 			_mem_trace(ld, *heap);
 			_mem_trace(ln, ").");
 
-			ret = insert(size, (addr_t)(heap), 0, memfirst);
+			ret = insert(size, (addr_t)(memfirst) - (addr_t)(tbsize), 0, memfirst);
 			memfirst = get_memheader_of(ret);
+
+			_mem_trace(, "   -> inserted (memfirst@");
+			_mem_trace(ptr, memfirst);
+			_mem_trace(ln, ").");
 
 			return ret;
 		}
