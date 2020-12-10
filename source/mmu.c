@@ -1,7 +1,11 @@
 #include <mmu/mmu.h>
+
 #include <mmu/mair.h>
 #include <mmu/tcr.h>
+#include <mmu/pte.h>
+
 #include <mem.h>
+#include <ptable.h>
 
 #include <stdint.h>
 
@@ -31,6 +35,9 @@ do { \
 		"msr " TABLE_MSR ", x0"\
 		); \
 } while(0);
+
+ptable_t kpt;
+ptable_t dpt;
 
 static void mmu_set_mair(void) {
 
@@ -98,102 +105,90 @@ static void mmu_set_tcr(void) {
 
 }
 
-/* PTE-related */
+extern int _start;
 
-#define for_each_table_entry(table, entry, skip) \
-	for (entry = table; entry < table + 512; entry += skip)
+void map_kernel(void) {
+	pentry_t* kentry;
+	pentry_t* pte;
+	unsigned int i;
+	pentry_t curr_addr;
 
-#define pentry_t uint64_t
-#define ptable_t pentry_t*
+	i = 0;
 
-void dump_table(ptable_t table) {
-	//pentry_t* entry;
+	kentry = ptable_get_free_entry(ptable_get_gpt());
 
-	dump_mem((void*)table, 512, 8);
+	ptable_init_from(ptable_get_gpt(), &kpt);
 
-//	for_each_table_entry(table, entry, 2) {
-//		print64_raw(raw_ptr(entry));
-//		print(": ");
-//		print64_raw(*entry);
-//		print(" ");
-//		print64_raw(*(entry + 1));
-//		newline();
-//	}
-}
+	/* map first GB for kernel */
+	//*kentry = PE_KERNEL_CODE;
+	*kentry = PT_TABLE_DESC;
+	*kentry |= (pentry_t)(kpt.raw_table);
 
-extern void memzero(addr_t, addr_t);
+	for_each_pte_in(&kpt, pte) {
 
-ptable_t create_table(void) {
-	ptable_t table;
-	entry_t* entry;
-	uint16_t count = 0;
+		curr_addr = ((pentry_t)&_start)
+			  + (pentry_t)(kpt.entry_span * (i++));
 
-	table = (ptable_t)alloc_fast_align(4096, 4096);
+		if (curr_addr >= 0x3f000000)
+			break;
 
-	for_each_table_entry(table, entry, 1) {
-		*entry = count++;
+		*pte = curr_addr | PE_KERNEL_CODE | PT_BLOCK_ENTRY;
 	}
 
-	//memzero(raw_ptr(table), raw_ptr(table) + 4096);
+	dump_table(&kpt);
 
-	return table;
-}
-
-/* 0 - 512GB, 1 - 1GB, 2 - 2MB, 3 - 4kB
- * level 0 can only point to a next level 1 entry
- * level 3 cannot point to another table and can only
- * output block address */
-
-#define PT_BLOCK_ENTRY	0x1	/* 1, 2 */
-#define PT_TABLE_ENTRY	0x3	/* 1, 2 */
-#define PT_TABLE_DESC	0x3	/* 0, 1, 2 */
-#define PT_INVALID	0x0	/* 0, 1, 2, 3 */
-
-void set_entry(entry_t* table, uint16_t entry_no, entry_t entry) {
 	return;
 }
 
-/*
-static uint8_t mmu_access_permission(enum mmu_ap_unprivileged apu, enum mmu_ap_privileged app) {
+void map_device(void) {
+	pentry_t* dentry;
+	pentry_t* pte;
+	unsigned int i;
+	pentry_t curr_addr;
 
-	switch (apu) {
-	case MMU_NO_ACCESS_EL0:
-		return app == MMU_RW_EL123 ? 0x0 : 0x80;
-	case MMU_RW_EL0:
-		return 0x40;
-	case MMU_RO_EL0:
-		return 0xc0;
-	default:
-		break;
+	i = 0;
+
+	dentry = ptable_get_free_entry(ptable_get_gpt());
+
+	ptable_init_from(ptable_get_gpt(), &dpt);
+
+	/* map device */
+	//*kentry = PE_DEVICE;
+	*dentry |= PT_TABLE_DESC;
+	*dentry |= (pentry_t)(dpt.raw_table);
+
+	for_each_pte_in(&dpt, pte) {
+		curr_addr = 0x3f000000 + (pentry_t)(dpt.entry_span * (i++));
+
+		if (curr_addr >= 0x40000000)
+			break;
+
+		*pte = curr_addr | PE_DEVICE | PT_BLOCK_ENTRY;
 	}
 
-	return 0x80;
-}
-
-static void mmu_set_tts1_attrs(reg_t* addr, uint8_t mair_index, uint8_t ns, uint8_t ap, enum mmu_sh_attr sh, enum mmu_ep ep) {
-
-	*addr |= ((reg_t)mair_index << 2);
-	*addr |= ((reg_t)ns << 5);
-	*addr |= (reg_t)ap;
-	*addr |= ((reg_t)sh << 8);
-	*addr |= ((reg_t)ep << 53);
+	dump_table(&dpt);
 
 	return;
 }
-*/
 
 /* general */
 
 void mmu_init(void) {
-	ptable_t table;
+
+	ptable_gpt_init(1024 * 1024 * 1024, 512);
+
+	mmu_trace(ln, "Initialized GPT.", LOG_INFO);
+
+	map_kernel();
+
+	map_device();
+
+	dump_table(ptable_get_gpt());
 
 	mmu_trace(ln, "Initializing MMU.", LOG_INFO);
 
 	mmu_set_mair();
 	mmu_set_tcr();
-
-	table = create_table();
-	dump_table(table);
 
 	//mmu_load_table("ttbr0_el1", "_ld_tt_l1_base");
 	

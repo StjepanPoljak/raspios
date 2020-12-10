@@ -107,6 +107,14 @@ void dump_mem(void* start, unsigned int count, unsigned int cols) {
 	uint8_t remainder;
 	unsigned int col;
 
+	log_info(, "Called dump_mem(");
+	_log(ptr, start);
+	_log(, ", ");
+	_log(64, count);
+	_log(, ", ");
+	_log(64, cols);
+	_log(ln, ")");
+
 	remainder = count % cols;
 
 	if (remainder) {
