@@ -90,7 +90,8 @@ invalid_irq_handler:
 	adr x1, uart_write_char
 	mov x2, #8
 	bl print_hex
-	b hang
+1:
+	b 1b
 
 sp_elx_irq_handler:
 	regs_save
@@ -98,6 +99,7 @@ sp_elx_irq_handler:
 	adr x1, uart_write_char
 	bl print_string
 
+/*
 	ldr x0, =0x3f00b208
 	ldr w0, [x0]
 	adr x1, uart_write_char
@@ -109,15 +111,15 @@ sp_elx_irq_handler:
 	adr x1, uart_write_char
 	mov x2, #4
 	bl print_hex_raw
-
+*/	
 	bl timer_init
 
-	ldr x0, =0x3f003000
+	ldr x0, =0x40003000
 	mov w1, #2
 	str w1, [x0]
 
 	regs_restore
 	eret
 
-invalid_irq_message: .asciz "(!) Unhandled IRQ received.\n\r\0"
-irq_handler_message: .asciz "\n\r(i) Got IRQ: "
+invalid_irq_message: .asciz "(!) Unhandled IRQ received.\n\r"
+irq_handler_message: .asciz "(i) Got IRQ.\n\r"

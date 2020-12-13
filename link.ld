@@ -2,7 +2,7 @@ VA_START = (1 << CONFIG_VA_BITS) * ((1 << (64 - CONFIG_VA_BITS)) - 1);
 
 SECTIONS
 {
-	. = VA_START;
+	. = 0x1000000;
 	.text.boot : { *(.text.boot) }
 	. = ALIGN(16);
 	.data : { *(.data, .rodata) }

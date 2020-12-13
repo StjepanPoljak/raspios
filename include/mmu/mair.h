@@ -30,7 +30,7 @@
 /* ========== MAIR templates ==========*/
 
 /* inner cacheable, outer cacheable */
-#define MAIR_DEVICE		_MAIR_DEVICE_nGnRnE
+#define MAIR_DEVICE		_MAIR_DEVICE_nGnRE
 
 /* inner cacheable, outer cacheable */
 #define MAIR_CACHEABLE		(_MAIR_CACHEABLE | \

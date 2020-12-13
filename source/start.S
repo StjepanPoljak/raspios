@@ -19,6 +19,11 @@
 	bl	print_hex
 .endm
 
+.macro disable_mmu
+	msr sctlr_el2, xzr
+	msr sctlr_el1, xzr
+.endm
+
 .section ".text.boot"
 
 .globl _start
@@ -48,15 +53,13 @@ el3_entry:
 
 	/* MMU and cache is always
 	 * disabled in EL3 */
-	set_mmu_el 2 _MMU_DISABLED
-	set_mmu_el 1 _MMU_DISABLED
+	disable_mmu
 
 	enter_el 3 2 el2_entry
 
 no_el3_entry:
 
-	set_mmu_el 2 _MMU_DISABLED
-	set_mmu_el 1 _MMU_DISABLED
+	disable_mmu
 
 el2_entry:
 
@@ -74,7 +77,7 @@ el2_entry:
 
 el1_entry:
 
-	irq_vector_el 1
+	msr	daifset, #2
 
 	/* setup early stack */
 	adr	x1, _ld_stack
@@ -99,24 +102,6 @@ el1_entry:
 
 	bl newline
 
-	bl	timer_init
-
-	/* rpi enable timer IRQ */
-
-	mov	w0, #0x2
-	ldr	x1, =0x3f00B210
-	str	w0, [x1]
-
-	ldr	w0, =0x2000000
-	ldr	x1, =0x3f00B214
-	str	w0, [x1]
-
-	/* enable interrupts */
-	msr	daifclr, #2
-
-	early_print time_init_msg uart_write_char
-	early_print curr_el_msg uart_write_char
-
 	curr_el_to x0
 	adr	x1, uart_write_char
 	mov	x2, #1
@@ -131,7 +116,7 @@ hang:
 	wfi
 	b	hang
 
-.section ".data"
+.section .data
 
 test_string:
 	.asciz "\n\r\n\rHello.\n\rHow are you?\n\rI am under the water.\n\rPlease help me.\n\r\n\r"
@@ -139,8 +124,6 @@ curr_el_msg:
 	.asciz " * CurrentEL: "
 irqs_init_msg:
 	.asciz "(i) IRQ vector loaded.\n\r"
-time_init_msg:
-	.asciz "(i) Timer initialized.\n\r"
 paddr_msg:
 	.asciz "(i) Loaded at physical address: "
 stack_paddr_msg:

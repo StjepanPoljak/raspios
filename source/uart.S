@@ -9,7 +9,8 @@
 .equ IRQBASE,		0x3f00B200
 
 /* ******* UART address space ******* */
-.equ UARTBASE,		0x3f215000
+.globl UARTBASE
+UARTBASE:		.dword 0x3f215000
 
 .equ AUX_ENABLE,	0x004
 /* mUART, SPI1, SPI2 enable / disable (RW)
@@ -185,7 +186,7 @@ uart_init:
 	stp	x19, x20, [sp]
 	stp	x21, x30, [sp, #16]
 
-	ldr	x20, =UARTBASE
+	ldr	x20, UARTBASE
 	ldr	x21, =GPIOBASE
 
 	/* mUART enable */
@@ -285,7 +286,8 @@ uart_write_char:
 	str	x30, [sp, #8]
 
 uart_write_char_loop:
-	ldr	x19, =UARTBASE
+	adr	x19, UARTBASE
+	ldr	x19, [x19]
 	ldr	w20, [x19, AUX_MU_LSR]
 	and	w20, w20, #0x20
 	cbz	w20, uart_write_char_loop

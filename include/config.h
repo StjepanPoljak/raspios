@@ -1,6 +1,3 @@
-#define _MMU_ENABLED 1
-#define _MMU_DISABLED 0
-
 #define _SECURE 1
 #define _UNSECURE 0
 
@@ -58,48 +55,6 @@
 	msr	elr_el\el_src, x0
 
 	eret
-.endm
-
-.macro set_mmu_el el enabled
-	/*
-	 * ===== sctlr_elx =======
-	 *     system control
-	 *        register 
-	 * =======================
-	 */
-
-	/* RESERVED (29:28)
-	 * RESERVED (23:22)
-	 * RESERVED (18)
-	 * RESERVED (16)
-	 * RESERVED (11)
-	 * RESERVED (5:4)
-	 * -----------------------
-	 * write 1 to each reserved
-	 * register */
-	ldr	x0, =0x30c50830
-
-	/* I (12)
-	 * -----------------------
-	 * disable I-cache */
-
-	/* C (2)
-	 * -----------------------
-	 * disable d-cache */
-
-	/* M (0)
-	 * -----------------------
-	 *  disable MMU */
-
-	ldr	w2, =\enabled
-	lsl	w1, w2, #12
-	orr	w0, w0, w1
-	lsl	w1, w2, #2
-	orr	w0, w0, w1
-	orr	w0, w0, w2
-
-	msr	sctlr_el\el, x0
-
 .endm
 
 /* secure = 1
@@ -163,9 +118,3 @@
 	lsr	\reg, \reg, #2
 	and	\reg, \reg, #0xf
 .endm
-
-.macro irq_vector_el el
-	adr	x0, irq_vector
-	msr	vbar_el\el, x0
-.endm
-

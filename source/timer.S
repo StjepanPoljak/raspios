@@ -6,7 +6,7 @@
 .equ	TIMER_C2,	0x14
 .equ	TIMER_C3,	0x18
 
-.equ	TIMER_BASE,	0x3f003000
+.equ	TIMER_BASE,	0x40003000
 
 .globl timer_init
 timer_init:

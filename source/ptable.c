@@ -8,7 +8,7 @@ ptable_t gpt;
 
 void dump_table(ptable_t *table) {
 
-	dump_mem((void*)table->raw_table, table->num_entries, 8);
+	dump_mem((void*)table->raw_table, table->num_entries, 4);
 
 	return;
 }

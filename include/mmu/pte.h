@@ -31,15 +31,20 @@
 #define PE_UXN		((pentry_t)1 << 54)
 
 #define PE_DEVICE	(((pentry_t)MAIR_DEVICE_INDEX << 2) \
-			| PE_KERNEL_RW | PE_PXN | PE_UXN | PE_ISH)
+			| PE_KERNEL_RW | PE_PXN | PE_UXN | PE_OSH) \
+			| PE_ACCESSED
 #define PE_KERNEL_DATA	(((pentry_t)MAIR_CACHEABLE_INDEX << 2) \
-			| PE_KERNEL_RW | PE_PXN | PE_UXN | PE_ISH)
+			| PE_KERNEL_RW | PE_PXN | PE_UXN | PE_ISH) \
+			| PE_ACCESSED
 #define PE_KERNEL_CODE	(((pentry_t)MAIR_CACHEABLE_INDEX << 2) \
-			| PE_KERNEL_RW | PE_UXN | PE_ISH)
+			| PE_KERNEL_RW | PE_UXN | PE_ISH) \
+			| PE_ACCESSED
 #define PE_USER_DATA	(((pentry_t)MAIR_CACHEABLE_INDEX << 2) \
-			| PE_USER_RW | PE_PXN | PE_UXN | PE_ISH)
+			| PE_USER_RW | PE_PXN | PE_UXN | PE_ISH) \
+			| PE_ACCESSED
 #define PE_USER_CODE	(((pentry_t)MAIR_CACHEABLE_INDEX << 2) \
-			| PE_USER_RW | PE_PXN | PE_ISH)
+			| PE_USER_RW | PE_PXN | PE_ISH) \
+			| PE_ACCESSED
 
 #define pte_clear_mair(entry) (*entry &= ~((pentry_t)0x1c))
 #define pte_mark_non_cacheable(entry) do { \

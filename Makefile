@@ -36,3 +36,6 @@ objdump: $(builddir)/$(PROJ).elf
 .PHONY=clean
 clean:
 	rm -rf $(PROJ).img $(builddir)
+
+qemu: $(PROJ).img
+	qemu-system-aarch64 -M raspi3 -kernel $^ -serial null -serial mon:stdio -nographic
