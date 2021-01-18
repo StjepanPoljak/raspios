@@ -2,7 +2,10 @@ PROJ = kernel8
 CROSS_COMPILE = aarch64-none-elf
 CFLAGS = -Wall -ffreestanding -nostdinc -nostdlib -nostartfiles -Iinclude
 LDFLAGS = -nostdlib -nostartfiles
-OPTIONS = $(shell awk 'BEGIN{ opts="" } { opts = opts (opts == "" ? "" : OFS) "-D" $$0 } END { print opts }' config.txt)
+OPTIONS = $(shell sed '/^\s*\#/d' config.txt | awk '\
+	  BEGIN { opts="" } \
+	  { opts = opts (opts == "" ? "" : OFS) "-D" $$0 } \
+	  END { print opts }')
 C_INCLUDE_PATH ?= cc/aarch64-none-elf/include
 
 srcdir = source
@@ -17,10 +20,10 @@ all: $(builddir) $(PROJ).img
 $(builddir):
 	mkdir $(builddir)
 
-$(builddir)/%_c.o: $(srcdir)/%.c include/*.h
+$(builddir)/%_c.o: $(srcdir)/%.c include/*.h config.txt
 	$(CROSS_COMPILE)-gcc $(OPTIONS) $(CFLAGS) -c $< -o $@
 
-$(builddir)/%_S.o: $(srcdir)/%.S include/*.h
+$(builddir)/%_S.o: $(srcdir)/%.S include/*.h config.txt
 	$(CROSS_COMPILE)-gcc $(OPTIONS) $(CFLAGS) -c $< -o $@
 
 $(builddir)/$(PROJ).elf: $(addprefix $(builddir)/,$(objs)) link.ld

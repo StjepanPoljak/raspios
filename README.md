@@ -3,30 +3,38 @@
 This is a little playground for AArch64 assembly on Raspberry Pi 3B+ (BCM2837B0 ARM Cortex A-53). It can be used and tweaked to bootstrap development on the chip. Current features are:
 
  * run from U-boot
- * run from any exception level to any lower exception level
+ * run from EL3 or EL2
  * UART functionality
  * print string and hex with customizable callbacks (here as UART)
  * exception / interrupt vector table
  * timer functionality
+ * memory heap allocation
+ * basic MMU mapping
 
 ## Cross Compiler
 
-RaspiOS uses the `aarch64-none-eabi` cross compiler available on ARM toolchain download site. To avoid installation anxieties, you can simply run `./install-cc.sh` script which will install the cross-compiler into the `cc` subfolder of your project. Thus, when running `make`, you can simply use:
+RaspiOS uses the `aarch64-none-eabi` cross compiler available on ARM toolchain download site. To avoid installation anxieties, you can simply run `./install-cc.sh` script which will install the cross-compiler into the `cc` subfolder of your project. Thus, you can simply use:
 
 ```shell
-PATH=cc/bin:$PATH C_INCLUDE_PATH=cc/aarch64-none-elf/include make
+./cross-compile.sh
 ```
+
+This will set up all necessary environment variables and run `make`. You can of course pass any argument to the script as you would do to make, e.g. `./cross-compile.sh clean`. Another available option is `objdump` which will open the `objdump` of the ELF file in the Vim text editor.
 
 ## Build
 
-You can use various options to build it, and the default values are already defined in Makefile under OPTIONS environment variable. Options for early start:
+You can use various options to build the OS, and the default values are already defined in `config.txt` file. Options for early start:
 
- * `BOOT_ADDR` - boot address (default is `0x01000000` which is basically `$kernel_addr_r` in U-Boot)
- * `BOOT_MODE` - specifies the target execution level (current execution level is determined at runtime)
- * `STACK_SIZE` - stack size (default is `0x1000`, does not have to be multiple of 16 bytes, as it will be aligned in the end (resulting in a somewhat larger stack)
- * `SECURE` - set as `1` to run target EL in secure or unsecure world
+```
+CONFIG_STACK_SIZE=0x1000
+CONFIG_VA_BITS=39
+CONFIG_SECURE=0
+CONFIG_GRANULE_SIZE=4KB
+```
 
-Options for memory:
+The `CONFIG_SECURE` is about to be obsolete, and `CONFIG_VA_BITS` and `CONFIG_GRANULE_SIZE` aren't yet properly adapted to other values. There are also two more options for memory allocator debug:
 
- * `MEM_TESTS` - run some basic unit tests on memory initialization
- * `MEM_TRACE` - print detailed debug information on memory operations
+ * `CONFIG_MEM_TESTS` - run some basic unit tests on memory initialization
+ * `CONFIG_MEM_TRACE` - print detailed debug information on memory operations
+
+Note: You can disable these last options simply by commenting them out with `#` sign.

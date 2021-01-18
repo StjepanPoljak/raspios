@@ -11,13 +11,10 @@ static mem_size_t hole_size;
 static mem_size_t alloc_count;
 static mem_size_t hole_count;
 
-#define MEM_TRACE
-#define MEM_TESTS
-
 #define DEFAULT_ALIGN 8
 #define align_default(size) align(size, DEFAULT_ALIGN)
 
-#ifdef MEM_TRACE
+#ifdef CONFIG_MEM_TRACE
 #define _mem_trace(suffix, value) print ## suffix(value)
 #define mem_trace(suffix, value, level) log(suffix, value, level)
 #else
@@ -52,7 +49,7 @@ static mem_size_t memheader_size(void) {
 
 /* unit tests */
 
-#ifdef MEM_TESTS
+#ifdef CONFIG_MEM_TESTS
 static void memheader_pad_test(void) {
 
 	log_test(ln, "Testing memheader_t padding...");
@@ -196,7 +193,7 @@ void mem_init(void) {
 	_mem_trace(ln, ").");
 
 
-#ifdef MEM_TESTS
+#ifdef CONFIG_MEM_TESTS
 	memheader_pad_test();
 	pad_tests();
 	static_variable_integrity_test();
@@ -397,7 +394,8 @@ void* alloc_slow(mem_size_t size, enum alloc_slow_mode mode) {
 			_mem_trace(ld, *heap);
 			_mem_trace(ln, ").");
 
-			ret = insert(size, (addr_t)(memfirst) - (addr_t)(tbsize), 0, memfirst);
+			ret = insert(size, (addr_t)(memfirst)
+					 - (addr_t)(tbsize), 0, memfirst);
 			memfirst = get_memheader_of(ret);
 
 			_mem_trace(, "   -> inserted (memfirst@");
@@ -412,7 +410,8 @@ void* alloc_slow(mem_size_t size, enum alloc_slow_mode mode) {
 		while (curr->next) {
 
 			tbsize_curr = total_block_size(curr);
-			memdiff = (mem_size_t)(raw_ptr(curr->next) - raw_ptr(curr));
+			memdiff = (mem_size_t)(raw_ptr(curr->next)
+					     - raw_ptr(curr));
 
 			if ((memdiff - tbsize_curr) >= tbsize) {
 
@@ -420,8 +419,8 @@ void* alloc_slow(mem_size_t size, enum alloc_slow_mode mode) {
 				_mem_trace(64, memdiff);
 				_mem_trace(ln, "");
 
-				ret = insert(size,
-					     raw_ptr(curr) + (addr_t)tbsize_curr,
+				ret = insert(size, raw_ptr(curr)
+					  + (addr_t)tbsize_curr,
 					     curr, curr->next);
 
 				return ret;
@@ -430,7 +429,8 @@ void* alloc_slow(mem_size_t size, enum alloc_slow_mode mode) {
 		}
 	}
 
-	mem_trace(ln, "No suitable holes in heap, resorting to alloc_fast().", LOG_INFO);
+	mem_trace(ln, "No suitable holes in heap, "
+		      "resorting to alloc_fast().", LOG_INFO);
 
 	return alloc_fast(size);
 }

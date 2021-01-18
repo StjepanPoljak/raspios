@@ -22,7 +22,8 @@ typedef struct ptable_t {
 
 void dump_table(ptable_t *table);
 
-void ptable_init(ptable_t* table, unsigned int entry_span, unsigned int num_entries);
+void ptable_init(ptable_t* table, unsigned int entry_span,
+		 unsigned int num_entries);
 pentry_t* ptable_get_free_entry(ptable_t* table);
 void ptable_init_from(ptable_t* parent, ptable_t* table);
 
