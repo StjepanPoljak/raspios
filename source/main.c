@@ -2,18 +2,38 @@
 #include <mem.h>
 #include <log.h>
 
-reg_t gpio = 0x40000000;
+#include <mailbox.h>
+
+addr_t gpio = 0x40000000;
+
+#define TEMPERATURE_TAG 0x30006
+#define MAX_CLOCK_RATE_TAG 0x30004
+#define PROPERTY_CHANNEL 0x8
+
+DEFINE_MAILBOX_BUFFER(msg, 2);
 
 int main(int argc, const char* argv[]) {
 
+	addr_t phaddr;
 	reg_t* var1;
 	reg_t* var2;
 	reg_t* var3;
 	reg_t* var4;
+	uint32_t tid[1] = { 0 };
+	uint32_t val;
 
 	println("Welcome to the wonderful world of C!");
 
 	mem_init();
+
+	mbox_init(0x3f000000 | DEFAULT_MAILBOX_BASE);
+	create_msg(2, msg, TEMPERATURE_TAG, 1, tid);
+	mbox_comm(msg, PROPERTY_CHANNEL);
+	mbox_get(msg, 1, &val);
+
+	log(,"Got temperature: ", LOG_INFO);
+	_log(64, (uint64_t)val);
+	_log(ln, "");
 
 	mmu_init();
 

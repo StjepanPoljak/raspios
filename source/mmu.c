@@ -30,7 +30,7 @@
 ptable_t kpt;
 ptable_t dpt;
 
-static addr_t virt_to_phys(addr_t va) {
+addr_t addr_trans(addr_t va) {
 
 	addr_t pa;
 
@@ -41,6 +41,9 @@ static addr_t virt_to_phys(addr_t va) {
 		: "r" (va)
 		);
 
+	if (pa & 0x1)
+		return 0;
+
 	mmu_trace(, "virt_to_phys(", LOG_INFO);
 	_mmu_trace(64, va);
 	_mmu_trace(, ") = ");
@@ -48,7 +51,6 @@ static addr_t virt_to_phys(addr_t va) {
 	_mmu_trace(ln, "");
 
 	return pa;
-
 }
 
 #define load_table(table, table_base) do { \

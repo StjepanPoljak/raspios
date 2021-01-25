@@ -1,6 +1,8 @@
 #ifndef MMU_H
 #define MMU_H
 
+#include <mem.h>
+
 #define entry_no_t uint16_t
 #define entry_t uint64_t
 
@@ -13,6 +15,7 @@
 
 /* MMU functions */
 
+addr_t addr_trans(addr_t va);
 void mmu_init(void);
 
 #endif

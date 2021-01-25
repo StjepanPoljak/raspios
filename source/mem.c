@@ -103,7 +103,7 @@ void dump_mem(void* start, unsigned int count, unsigned int cols) {
 	uint64_t* end;
 	uint8_t remainder;
 	unsigned int col;
-
+/*
 	log_info(, "Called dump_mem(");
 	_log(ptr, start);
 	_log(, ", ");
@@ -111,7 +111,7 @@ void dump_mem(void* start, unsigned int count, unsigned int cols) {
 	_log(, ", ");
 	_log(64, cols);
 	_log(ln, ")");
-
+*/
 	remainder = count % cols;
 
 	if (remainder) {
@@ -139,7 +139,6 @@ void dump_mem(void* start, unsigned int count, unsigned int cols) {
 		print(": ");
 
 		for (i = end; i < end + remainder; i += 1) {
-			//i = (uint64_t*)start + (count - 1) * sizeof(start);
 			print64_raw(*i);
 			if (i < end + remainder)
 				print(" ");

@@ -36,5 +36,6 @@ The `CONFIG_SECURE` is about to be obsolete, and `CONFIG_VA_BITS` and `CONFIG_GR
 
  * `CONFIG_MEM_TESTS` - run some basic unit tests on memory initialization
  * `CONFIG_MEM_TRACE` - print detailed debug information on memory operations
+ * `CONFIG_MBOX_TRACE` - trace mailbox functionality
 
 Note: You can disable these last options simply by commenting them out with `#` sign.
