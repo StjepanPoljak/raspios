@@ -32,6 +32,8 @@ struct simpnode_t {
 };
 
 struct simpnode_t* create_tree(const char* curr_dir);
-int deinit_simpnode(struct simpnode_t* node);
+int deinit_simpnode(struct simpnode_t* node,
+		    void(*callback)(struct simpnode_t*, void*),
+		    void* data);
 
 #endif

@@ -1,16 +1,13 @@
 #include "simpnode.h"
 
 #include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 #include <errno.h>
-
 #include <sys/types.h>	/* DIR */
 #include <dirent.h>	/* opendir() */
 #include <unistd.h>	/* getcwd() */
 
-#define logs_err(fmt, ...) printf("(!) " fmt "\n", ## __VA_ARGS__)
-#define logs_inf(fmt, ...) printf("(i) " fmt "\n", ## __VA_ARGS__)
+#include "common.h"
 
 static void init_sndir(struct simpnode_t* node, const char* name) {
 
@@ -175,16 +172,6 @@ static struct simpnode_t* pop_simpnode(stack_t* stack) {
 	return stack->stack[stack->last--];
 }
 
-static const char* basename(const char* path) {
-	unsigned int i;
-
-	for (i = strlen(path); i >= 0; i--)
-		if (path[i] == '/')
-			return &(path[i]);
-
-	return path;
-}
-
 static void deinit_simpnode_single(struct simpnode_t* node) {
 	struct simpnode_t* temp;
 
@@ -202,7 +189,9 @@ static void deinit_simpnode_single(struct simpnode_t* node) {
 	return;
 }
 
-int deinit_simpnode(struct simpnode_t* node) {
+int deinit_simpnode(struct simpnode_t* node,
+		    void(*callback)(struct simpnode_t*, void*),
+		    void* data) {
 	stack_t stack;
 	struct simpnode_t* curr;
 	int i, ret;
@@ -214,6 +203,9 @@ int deinit_simpnode(struct simpnode_t* node) {
 		return ret;
 
 	while ((curr = pop_simpnode(&stack))) {
+
+		if (callback)
+			callback(curr, data);
 
 		switch (curr->simpnode_type) {
 		case SIMPNODE_DIRECTORY:
@@ -357,7 +349,7 @@ create_tree_fail:
 		free(cwd);
 
 	if (root)
-		deinit_simpnode(root);
+		deinit_simpnode(root, NULL, NULL);
 
 	return NULL;
 }

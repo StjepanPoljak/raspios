@@ -1,13 +1,33 @@
 #include <stdio.h>
+#include <stdbool.h>
 
-#include "simpnode.h"
+#include "serializer.h"
+
+#define COLS 16
+
+bool printable(char c) {
+
+	return !(c < 32 || c > 125);
+}
 
 int main(int argc, const char* argv[]) {
-	struct simpnode_t* root;
+	data_t* data;
+	int i;
 
-	root = create_tree(NULL);
+	data = serialize(NULL);
 
-	deinit_simpnode(root);
+	printf("Got %d bytes.\n", data->last + 1);
+
+	for (i = 0; i < data->last; i++) {
+		if (printable((char)data->data[i]))
+			printf(" %c ", (char)data->data[i]);
+		else
+			printf("%.2x ", data->data[i]);
+		if (i % COLS == COLS - 1)
+			printf("\n");
+	}
+
+	printf("\n");
 
 	return 0;
 }
