@@ -3,3 +3,4 @@
 build
 cc
 *.pyc
+simpfs/simpfs
