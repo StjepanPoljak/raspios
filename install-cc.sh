@@ -4,7 +4,7 @@ CCDIR=cc
 CURR="`pwd`"
 
 installed() {
-	echo "(i) Cross-compiler has been installed. You can now run make with:\n\n\tPATH=cc/bin/:\$PATH make\n\nEnjoy."
+	echo -e "(i) Cross-compiler has been installed. You can now run make with:\n\n\tPATH=cc/bin/:\$PATH make\n\nEnjoy."
 }
 
 if ! [ -d $CCDIR ]; then
