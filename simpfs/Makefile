@@ -2,7 +2,7 @@ PROJ = simpfs
 ifeq ($(CC),cc)
 CC = gcc
 endif
-CFLAGS = -Wall -Iinclude
+CFLAGS = -Wall -Iinclude -g
 
 srcdir = source
 incdir = include

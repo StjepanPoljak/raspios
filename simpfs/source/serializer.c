@@ -7,15 +7,19 @@
 #include "common.h"
 #include "simpnode.h"
 
-static const char* basename(const char* path) {
-	unsigned int i;
+typedef struct {
+	uint32_t adr;
+	struct simpnode_t* child;
+} child_node_t;
 
-	for (i = strlen(path); i >= 0; i--)
-		if (path[i] == '/')
-			return &(path[i + 1]);
+static child_node_t* children = NULL;
+static size_t child_num = 0;
 
-	return path;
-}
+#define GETC(CURR, I) \
+	(CURR)->simpnode.dir.children[(I)]
+
+#define GETB(VAL, POS, TYPE) \
+	(((VAL) & ((TYPE)0xFF << (8 * (POS)))) >> (8 * (POS)))
 
 void init_data(data_t* data) {
 
@@ -30,6 +34,8 @@ void deinit_data(data_t* data) {
 
 	if (data->data)
 		free(data->data);
+
+	free(data);
 
 	return;
 }
@@ -57,9 +63,6 @@ static int add_byte(data_t* data, uint8_t byte) {
 	return 0;
 }
 
-#define GETB(VAL, POS, TYPE) \
-	(((VAL) & ((TYPE)0xFF << (8 * (POS)))) >> (8 * (POS)))
-
 static int u32_to_u8(uint32_t val, int(*op)(uint8_t, int, void*), void* data) {
 	int i, ret;
 
@@ -84,33 +87,6 @@ int add_data(data_t* data, const uint8_t* new_data, int bytes) {
 	return 0;
 }
 
-static uint8_t* get_last_ptr(data_t* data) {
-
-	return &(data->data[data->last]);
-}
-
-/*
-uint8_t type
-uint8_t ... name \0
-if (type == FILE)
-uint32_t data_size
-uint8_t data
-elif (type == DIR)
-uint32_t child_num
-uint32_t child1_loc
-uint32_t child2_loc
-...
-uint32_t child3_loc
-endif
-
-*/
-
-typedef struct {
-	//uint8_t* ptr;
-	uint32_t adr;
-	struct simpnode_t* child;
-} child_node_t;
-
 int data_op(uint8_t byte, int i, void* udata) {
 	data_t* data;
 	int ret;
@@ -125,13 +101,31 @@ int data_op(uint8_t byte, int i, void* udata) {
 	return 0;
 }
 
-static child_node_t* children = NULL;
-static size_t child_num = 0;
+static int export_binary(data_t* data, const char* outfile) {
+	int len;
+	FILE *f;
 
-#define GETC(CURR, I) \
-	(CURR)->simpnode.dir.children[(I)]
+	f = fopen(outfile, "w");
+	if (!f) {
+		logs_err("Could not open %s for output.", outfile);
 
-void callback(struct simpnode_t* curr, void* udata) {
+		return -EINVAL;
+	}
+
+	len = data->last + 1;
+
+	if (fwrite(data->data, 1, len, f) != len) {
+		logs_err("Error writing data to %s.", outfile);
+
+		return -ENOMEM;
+	}
+
+	fclose(f);
+
+	return 0;
+}
+
+static void callback(struct simpnode_t* curr, void* udata) {
 	data_t* data;
 	int i;
 	int prev_child_num;
@@ -140,11 +134,11 @@ void callback(struct simpnode_t* curr, void* udata) {
 	data = (data_t*)udata;
 	prev_child_num = child_num;
 
-	for (i = 0; i < prev_child_num; i++) {
+	for (i = 0; i < child_num; i++) {
 		if (children[i].child == curr) {
-			printf("%.4x\n", data->last);
 			data_last = data->last + 1;
-			memcpy(&(data->data[children[i].adr]), &data_last, sizeof(data_last));
+			memcpy(&(data->data[children[i].adr]),
+			       &data_last, sizeof(data_last));
 			break;
 		}
 	}
@@ -160,31 +154,32 @@ void callback(struct simpnode_t* curr, void* udata) {
 		u32_to_u8(curr->simpnode.dir.child_lst + 1, data_op, data);
 		child_num = child_num + curr->simpnode.dir.child_lst + 1;
 
-		if (!children)
-			children = malloc(sizeof(*children) *
-					  child_num);
-		else
-			children = realloc(children, sizeof(*children) *
-					   child_num);
+		children = !children
+			 ? malloc(sizeof(*children) * child_num)
+			 : realloc(children, sizeof(*children) * child_num);
 
 		for (i = prev_child_num; i < child_num; i++) {
-			children[i].adr = data->last;
+			children[i].adr = data->last + 4;
 			children[i].child = GETC(curr, i - prev_child_num);
 			u32_to_u8(0, data_op, data);
-
 		}
+
 		break;
 
 	case SIMPNODE_FILE:
 		u32_to_u8(curr->simpnode.file.data_size, data_op, data);
-		add_data(data, curr->simpnode.file.data, curr->simpnode.file.data_size);
+
+		if (curr->simpnode.file.data_size > 0)
+			add_data(data, curr->simpnode.file.data,
+				 curr->simpnode.file.data_size);
+
 		break;
 	}
 
 	return;
 }
 
-data_t* serialize(const char* curr_dir) {
+data_t* serialize(const char* curr_dir, const char* outfile) {
 	struct simpnode_t* root;
 	data_t* data;
 
@@ -196,7 +191,16 @@ data_t* serialize(const char* curr_dir) {
 	if (!root)
 		return NULL;
 
+#ifdef SIMP_DEBUG
+	print_tree(root);
+#endif
 	deinit_simpnode(root, callback, data);
+
+	export_binary(data, outfile);
+
+	if (children)
+		free(children);
 
 	return data;
 }
+

@@ -11,6 +11,6 @@ typedef struct {
 
 void init_data(data_t* data);
 void deinit_data(data_t* data);
-data_t* serialize(const char* curr_dir);
+data_t* serialize(const char* curr_dir, const char* outfile);
 
 #endif
