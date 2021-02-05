@@ -378,7 +378,8 @@ create_tree_fail:
 
 #define CHECK_DATA_LAST(DATA, OFF, ACT) \
 	if ((DATA)->last + (OFF) >= (DATA)->size) { \
-		logs_err("Data offset (%d) exceeds data size (%d).", (DATA)->last + (OFF), (DATA)->size); \
+		logs_err("Data offset (%d) exceeds data size (%d).", \
+			(DATA)->last + (OFF), (DATA)->size); \
 		ACT; \
 	}
 
@@ -402,7 +403,8 @@ static uint32_t read_u32(data_t* data) {
 	res = 0;
 
 	for (i = 0; i < 4; i++)
-		res |= ((uint32_t)data->data[data->last + i] >> ((4 - i - 1) * 8));
+		res |= ((uint32_t)data->data[data->last + i]
+		    >> ((4 - i - 1) * 8));
 
 	return res;
 }
@@ -441,7 +443,8 @@ static struct simpnode_t* ds_dir(data_t* data, struct simpnode_t* parent) {
 
 	CHECK_DATA_LAST(data, 1, goto ds_dir_fail);
 	if ((simpnode_type_t)read_u8(data) != SIMPNODE_DIRECTORY) {
-		logs_err("Expected directory. Possible data corruption (%d).", (int)read_u8(data));
+		logs_err("Expected directory. Possible data corruption (%d).",
+			(int)read_u8(data));
 		goto ds_dir_fail;
 	}
 
@@ -654,7 +657,8 @@ exit_deserialize:
 	return root;
 }
 
-struct simpnode_t* get_node(const char* infile, const char* path) {
+struct simpnode_t* get_node(const char* infile, const char* path,
+			    struct simpnode_t** temp) {
 	char** path_arr;
 	char* path_dup;
 	char* token;
@@ -666,6 +670,7 @@ struct simpnode_t* get_node(const char* infile, const char* path) {
 
 	stack_t stack;
 
+	*temp = NULL;
 	path_arr = NULL;
 	path_dup = NULL;
 	token = NULL;
@@ -695,8 +700,6 @@ struct simpnode_t* get_node(const char* infile, const char* path) {
 		i++;
 	}
 
-	printf("Array size: %d\n", path_arr_sz);
-
 	path_arr = malloc(sizeof(*path_arr) * path_arr_sz);
 	if (!path_arr) {
 		logs_err("Could not allocate memory.");
@@ -707,7 +710,6 @@ struct simpnode_t* get_node(const char* infile, const char* path) {
 	token = strtok(path_dup, "/");
 
 	if (has_root) {
-		printf("Has root\n");
 		path_arr[0] = strdup("root");
 		token = strtok(NULL, "/");
 		i++;
@@ -715,7 +717,6 @@ struct simpnode_t* get_node(const char* infile, const char* path) {
 
 	while (token != NULL) {
 		path_arr[i] = strdup(token);
-		printf("%s (%d) = %s\n", path_arr[i], i, token);
 
 		if (!path_arr[i]) {
 			logs_err("Could not allocate memory.");
@@ -726,15 +727,13 @@ struct simpnode_t* get_node(const char* infile, const char* path) {
 		i++;
 	}
 
-	printf("Tokenized.\n");
-
 	root = deserialize(infile);
 	if (!root) {
 		logs_err("Could not deserialize %s", infile);
 		goto get_node_exit;
 	}
 
-	printf("Deserialized.\n");
+	*temp = root;
 
 	if (push_simpnode(&stack, root) < 0) {
 		logs_err("Could not push node.");
@@ -744,7 +743,6 @@ struct simpnode_t* get_node(const char* infile, const char* path) {
 	i = 0;
 
 	if (strcmp(root->name, path_arr[i])) {
-		printf("Comparing %s with %s\n", root->name, path_arr[0]);
 		res = NULL;
 		goto node_not_found;
 	}
@@ -760,11 +758,9 @@ struct simpnode_t* get_node(const char* infile, const char* path) {
 			continue;
 		}
 		else if (res->simpnode_type == SIMPNODE_DIRECTORY) {
-			printf("Here\n");
 		
 			for (j = 0; j <= res->simpnode.dir.child_lst; j++) {
-				printf("Comparing %s with %s\n", res->simpnode.dir.children[j]->name,
-					   path_arr[i]);
+
 				if (strcmp(res->simpnode.dir.children[j]->name,
 					   path_arr[i]))
 					continue;
@@ -774,7 +770,7 @@ struct simpnode_t* get_node(const char* infile, const char* path) {
 					logs_err("Could not push node.");
 					goto node_not_found;
 				}
-				printf("Pushed %s\n", res->simpnode.dir.children[j]->name);
+
 				break;
 			}
 			i++;

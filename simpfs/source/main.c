@@ -63,10 +63,35 @@ static struct option long_options[] = {
 		action = ACT; \
 	}
 
+static int print_simpnode(struct simpnode_t* root) {
+	int i;
+	struct simpnode_t* cn;
+
+	switch(root->simpnode_type) {
+
+	case SIMPNODE_DIRECTORY:
+		for (i = 0; i <= root->simpnode.dir.child_lst; i++) {
+			cn = root->simpnode.dir.children[i];
+			printf("%s%s\n", cn->name,
+			       cn->simpnode_type == SIMPNODE_FILE ? "" : "/");
+		}
+		break;
+	case SIMPNODE_FILE:
+		for (i = 0; i < root->simpnode.file.data_size; i++)
+			printf("%c", root->simpnode.file.data[i]);
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 int main(int argc, char* const* argv) {
 	data_t* data;
 	int opt, option_index, ret;
 	struct simpnode_t* root;
+	struct simpnode_t* temp;
 	main_action_t action;
 	char* inf;
 	char* outf;
@@ -109,21 +134,37 @@ int main(int argc, char* const* argv) {
 
 	switch (action) {
 	case MAIN_ACTION_INSP:
-		root = get_node(inf, outf);
-		if (root)
-			printf("Found.\n");
-		else
-			printf("Not found.\n");
+		root = get_node(inf, outf, &temp);
+		if (!root) {
+			ret = -EINVAL;
+			if (temp)
+				deinit_simpnode(temp, NULL, NULL);
+
+			goto main_exit;
+		}
+
+		ret = print_simpnode(root);
+
+		if (temp)
+			deinit_simpnode(temp, NULL, NULL);
 		break;
 
 	case MAIN_ACTION_LIST:
 		root = deserialize(inf);
+		if (!root) {
+			ret = -EINVAL;
+			goto main_exit;
+		}
 		print_tree(root);
 		deinit_simpnode(root, NULL, NULL);
 		break;
 
 	case MAIN_ACTION_PACK:
 		data = serialize(inf, outf);
+		if (!data) {
+			ret = -EINVAL;
+			goto main_exit;
+		}
 		printf("(i) Created image %s (%d bytes).\n",
 		       outf, data->last + 1);
 		deinit_data(data);

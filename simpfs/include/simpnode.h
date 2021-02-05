@@ -39,6 +39,7 @@ int deinit_simpnode(struct simpnode_t* node,
 		    void* data);
 void print_tree(struct simpnode_t* root);
 struct simpnode_t* deserialize(const char* infile);
-struct simpnode_t* get_node(const char* infile, const char* path);
+struct simpnode_t* get_node(const char* infile, const char* path,
+			    struct simpnode_t** temp);
 
 #endif
