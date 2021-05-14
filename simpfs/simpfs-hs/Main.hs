@@ -39,6 +39,11 @@ main = (\args ->
                                    =<< makeRelativeToCurrentDirectory
                                        (args !! 0)
 
+                            "-i"    -> print
+                                   =<< (simpfsPeek (args !! 2))
+                                  <$!> simpfsDecode
+                                  <$!> BS.readFile (args !! 0)
+
                             _       -> printUsage
     ) =<< getArgs
 

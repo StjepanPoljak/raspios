@@ -71,7 +71,7 @@ instance Binary SimpNode where
 
               consume :: (Integral n, Binary a) => n -> [a] -> Get [a]
               consume 0 lst = return lst
-              consume num lst = (\x -> consume (num - 1) (x:lst)) =<< get
+              consume num lst = (\x -> consume (num - 1) (lst ++ [x])) =<< get
 
 putString :: String -> Put
 putString str = mapM_ (put . (fromIntegral :: Int -> Word8) . fromEnum)

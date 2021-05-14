@@ -377,7 +377,7 @@ create_tree_fail:
 }
 
 #define CHECK_DATA_LAST(DATA, OFF, ACT) \
-	if ((DATA)->last + (OFF) >= (DATA)->size) { \
+	if ((DATA)->last + (OFF) > (DATA)->size) { \
 		logs_err("Data offset (%d) exceeds data size (%d).", \
 			(DATA)->last + (OFF), (DATA)->size); \
 		ACT; \
@@ -385,7 +385,7 @@ create_tree_fail:
 
 static int get_name_len(data_t* data) {
 	int i;
-       
+
 	for (i = 0; i < data->size - data->last; i++) {
 		CHECK_DATA_LAST(data, i, return -1);
 
@@ -479,7 +479,6 @@ static struct simpnode_t* ds_dir(data_t* data, struct simpnode_t* parent) {
 	res->simpnode.dir.children = malloc(
 				sizeof(*(res->simpnode.dir.children)) *
 				res->simpnode.dir.child_num);
-
 
 	for (i = 0; i < res->simpnode.dir.child_num; i++) {
 		CHECK_DATA_LAST(data, 4, goto ds_dir_fail);
