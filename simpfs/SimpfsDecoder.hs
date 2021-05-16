@@ -16,7 +16,8 @@ import Data.Int
     (Int64)
 import qualified Data.ByteString.Lazy as BS
     (ByteString, drop, null)
-import System.FilePath (splitPath, dropTrailingPathSeparator)
+import System.FilePath
+    (splitPath, dropTrailingPathSeparator)
 
 unflatten :: [(ChildAddr, SimpNode)] -> Maybe (Tree SimpNode)
 unflatten [] = Nothing
@@ -32,50 +33,41 @@ unflattenIMS dict (Node (SimpDir nm cn cl) stree) = Node (SimpDir nm cn cl)
           setCL dict' (x:xs) = let new = dict' IMS.! (fromIntegral x) in
 
                 case new of
-                    SimpFile _ _ _  -> (Node new [])
+                    SimpFile _ _ _  -> Node new []
                                      : setCL dict' xs
 
                     SimpDir _ _ _   -> unflattenIMS dict' (Node new [])
                                      : setCL dict' xs
 
 simpfsDrawTree :: Tree SimpNode -> String
-simpfsDrawTree = drawTree . simpfsDrawableTree
+simpfsDrawTree = drawTree . drawableTree
 
-simpfsDrawableTree :: Tree SimpNode -> Tree String
-simpfsDrawableTree (Node (SimpDir nm cn cl) stree) =
-                    Node nm (map simpfsDrawableTree stree)
-simpfsDrawableTree (Node (SimpFile nm ds dt) []) = Node nm []
+    where drawableTree :: Tree SimpNode -> Tree String
+          drawableTree (Node (SimpFile nm _ _) []) = Node nm []
+          drawableTree (Node (SimpDir nm _ _) sub) =
+
+                let stree = map drawableTree sub in Node nm stree
 
 simpfsMakeTree :: BS.ByteString -> Maybe (Tree SimpNode)
 simpfsMakeTree = unflatten . simpfsDecode
-
-getFName :: SimpNode -> FilePath
-getFName (SimpDir nm _ _) = nm
-getFName (SimpFile nm _ _) = nm
 
 simpfsPeek :: FilePath -> [(ChildAddr, SimpNode)] -> Maybe SimpNode
 simpfsPeek _ [] = Nothing
 simpfsPeek fp lst =
 
     let dict = IMS.fromList . map (\(x, y) -> (fromIntegral x, y)) $ lst
-        fpl = map (dropTrailingPathSeparator) . splitPath $ fp
-        dict1 = dict IMS.! 0
-        fpl1 = fpl !! 0 in
+        fpl = map dropTrailingPathSeparator . splitPath $ fp
+        dict1 = dict IMS.! 0 in
 
-            if (getFName dict1) == fpl1
-            then peekStep fp (drop 1 fpl) [fpl1] dict dict1
+            if getFName dict1 == fpl !! 0
+            then peekStep fp (drop 1 fpl) dict dict1
             else Nothing
 
-    where peekStep :: FilePath -> [FilePath] -> [FilePath]
-                               -> IMS.IntMap SimpNode -> SimpNode
-                               -> Maybe SimpNode
-          peekStep _ [] [] _ _ = Nothing
-          peekStep fp' [] _ _ sn = Just sn
-          peekStep fp' (x:xs) fpl dict' sn = (\newsn ->
-
-                peekStep fp' xs (x:fpl) dict' newsn
-
-            ) =<< findChild sn x dict' -- Nothing -- case sn of
+    where peekStep :: FilePath -> [FilePath] -> IMS.IntMap SimpNode
+                                             -> SimpNode -> Maybe SimpNode
+          peekStep fp' [] _ sn = Just sn
+          peekStep fp' (x:xs) dict' sn = peekStep fp' xs dict'
+                                     =<< findChild sn x dict'
 
           findChild :: SimpNode -> FilePath -> IMS.IntMap SimpNode
                                             -> Maybe SimpNode
@@ -85,12 +77,17 @@ simpfsPeek fp lst =
 
                 let curr = dict'' IMS.! (fromIntegral c) in
 
-                    if (getFName curr) == cfp
+                    if getFName curr == cfp
                     then Just curr
                     else findChild (SimpDir nm cn cs) cfp dict''
 
+          getFName :: SimpNode -> FilePath
+          getFName (SimpDir nm _ _) = nm
+          getFName (SimpFile nm _ _) = nm
+
 simpfsDecode :: BS.ByteString -> [(ChildAddr, SimpNode)]
 simpfsDecode = decodeStep 0
+
     where decodeStep :: ChildAddr -> BS.ByteString -> [(ChildAddr, SimpNode)]
           decodeStep addr bs
             | BS.null bs    = []

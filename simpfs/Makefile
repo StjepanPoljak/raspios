@@ -1,26 +1,8 @@
-PROJ = simpfs
-ifeq ($(CC),cc)
-CC = gcc
-endif
-CFLAGS = -Wall -Iinclude -g
+proj=simpfs
 
-srcdir = source
-incdir = include
-builddir = build
-
-objs = $(addsuffix .o,$(basename $(notdir $(wildcard source/*.c))))
-
-all: $(builddir) $(PROJ)
-
-$(builddir):
-	mkdir $(builddir)
-
-$(builddir)/%.o: $(srcdir)/%.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(PROJ): $(addprefix $(builddir)/,$(objs))
-	$(CC) $(CFLAGS) $^ -o $@
+$(proj): Main.hs SimpfsEncoder.hs SimpfsDecoder.hs SimpNode.hs
+	ghc -dynamic -Wname-shadowing $< -o simpfs
 
 .PHONY=clean
 clean:
-	rm -rf $(PROJ) $(builddir)
+	rm -rf *.hi *.ho *.o $(proj)

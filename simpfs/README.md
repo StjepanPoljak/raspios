@@ -1,10 +1,10 @@
 # simpfs (Simple FileSystem)
 
-Simple FileSystem is exactly what it sounds like, a simple tool to create an image loadable and usable as a sort of init RAM disk for raspios. It's not very robust, and the code could have been written much better, but the whole purpose of it is to have a relatively simple and working file system in RAM without much complications.
+Simple FileSystem is exactly what it sounds like, a simple tool to create an image loadable and usable as a sort of init RAM disk for raspios. It's written in Haskell, so you will need GHC to compile.
 
 ## Build
 
-Does not require cross-compilation, can be built natively on Linux with a simple `make` command.
+First, make sure GHC (Haskell compiler) is installed. Then, run the build with a simple `make` command.
 
 ## Usage
 
