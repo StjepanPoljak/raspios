@@ -26,7 +26,7 @@ fixTree [] = []
 fixTree [x] = [snd x]
 fixTree (x:xs) = case snd x of
     SimpDir nm cn cl    -> let newcl = consume xs (fromIntegral cn)
-                               in (SimpDir nm cn newcl):(fixTree xs)
+                           in (SimpDir nm cn newcl):(fixTree xs)
     SimpFile nm ds dt   -> (SimpFile nm ds dt):(fixTree xs)
 
     where consume :: [(ChildAddr, SimpNode)] -> ChildAddr -> ChildList

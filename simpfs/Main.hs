@@ -12,7 +12,10 @@ import System.Directory
     (makeRelativeToCurrentDirectory)
 import System.Environment
     (getArgs)
-import Data.Tree (Tree)
+import Data.Tree
+    (Tree)
+import Data.Maybe
+    (maybe)
 
 main = (\args ->
 
@@ -39,9 +42,7 @@ main = (\args ->
                                    =<< makeRelativeToCurrentDirectory
                                        (args !! 0)
 
-                            "-i"    -> (\x -> case x of
-                                            Just sn -> print sn
-                                            Nothing -> putStrLn "Not found")
+                            "-i"    -> maybe (putStrLn "Not found") print
                                    =<< simpfsPeek (args !! 2)
                                   <$!> simpfsDecode
                                   <$!> BS.readFile (args !! 0)
@@ -61,7 +62,8 @@ printUsage = putStrLn $ "simpfs [ <archive> -l\n"
                      ++ "       | -h ]"
 
 printTree :: Maybe (Tree SimpNode) -> IO ()
-printTree Nothing = putStrLn "No tree was generated."
-printTree (Just tree) = putStrLn $ simpfsDrawTree tree
+printTree tree = maybe (putStrLn "No tree was generated.")
+                       (\x -> putStrLn $ simpfsDrawTree x)
+                       tree
 
 
