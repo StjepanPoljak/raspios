@@ -10,18 +10,13 @@ This is a little playground for AArch64 assembly on Raspberry Pi 3B+ (BCM2837B0 
  * timer functionality
  * memory heap allocation
  * basic MMU mapping
+ * basic GPU interface
 
 ## Cross Compiler
 
-RaspiOS uses the `aarch64-none-eabi` cross compiler available on ARM toolchain download site. To avoid installation anxieties, you can simply run `./install-cc.sh` script which will install the cross-compiler into the `cc` subfolder of your project. Thus, you can simply use:
+RaspiOS uses the `aarch64-none-elf` cross compiler available on ARM toolchain download site. This should be installed automatically by the build system. However, you can always try and avoid installation anxieties by running `./install-cc.sh` before starting the build.
 
-```shell
-./cross-compile.sh
-```
-
-This will set up all necessary environment variables and run `make`. You can of course pass any argument to the script as you would do to make, e.g. `./cross-compile.sh clean`. Another available option is `objdump` which will open the `objdump` of the ELF file in the Vim text editor.
-
-## Build
+## Configuration
 
 You can use various options to build the OS, and the default values are already defined in `config.txt` file. Options for early start:
 
@@ -39,3 +34,19 @@ The `CONFIG_SECURE` is about to be obsolete, and `CONFIG_VA_BITS` and `CONFIG_GR
  * `CONFIG_MBOX_TRACE` - trace mailbox functionality
 
 Note: You can disable these last options simply by commenting them out with `#` sign.
+
+## Build
+
+To build RaspiOS, simply run:
+
+```shell
+mkdir build
+cd build
+ARCH=aarch64 cmake ..
+make
+```
+
+## Known issues
+
+ * GPU drivers are not working in QEMU (could be just temperature sensor, though)
+ * timer triggers IRQ handler twice

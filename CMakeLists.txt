@@ -14,11 +14,12 @@ set(LINKER_SCRIPT "${ARCH_DIR}/link.ld")
 set(CMAKE_C_COMPILER "gcc")
 set(CMAKE_ASM_COMPILER "gcc")
 set(CMAKE_OBJCOPY "objcopy")
+set(DEFAULT_C_FLAGS "-Wall -ffreestanding -nostdinc -nostdlib -nostartfiles")
 
 include("${ARCH_DIR}/setup_arch.cmake")
 
-set(CMAKE_C_FLAGS "-Wall -ffreestanding -nostdinc -nostdlib -nostartfiles" CACHE STRING "")
-set(CMAKE_ASM_FLAGS "-Wall -ffreestanding -nostdinc -nostdlib -nostartfiles")
+set(CMAKE_C_FLAGS  "${DEFAULT_C_FLAGS}")
+set(CMAKE_ASM_FLAGS "${DEFAULT_C_FLAGS}")
 set(CMAKE_EXE_LINKER_FLAGS "-nostdlib -nostartfiles -T ${LINKER_SCRIPT}")
 
 execute_process(COMMAND bash -c
@@ -28,17 +29,12 @@ execute_process(COMMAND bash -c
 
 string(REPLACE " " " -D" DCONFIG_OPTIONS "-D${CONFIG_OPTIONS}")
 
-message("${DCONFIG_OPTIONS}")
+string(REPLACE " " ";" CONFIG_OPTIONS ${CONFIG_OPTIONS})
+add_compile_definitions(${CONFIG_OPTIONS})
 
 add_executable(${PROJECT_NAME})
 
-string(REPLACE " " ";" CONFIG_OPTIONS ${CONFIG_OPTIONS})
-
-add_compile_definitions(${CONFIG_OPTIONS})
-
 target_include_directories(${PROJECT_NAME} PRIVATE include)
-
-message("${LINKER_SCRIPT}")
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
 	COMMAND bash -c "${CMAKE_OBJCOPY} -O binary ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME} kernel8.img")
