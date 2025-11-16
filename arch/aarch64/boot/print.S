@@ -1,3 +1,5 @@
+.section .text.boot
+	
 /* x0 - register containing the half-byte to print (0xF mask) */
 /* x1 - address of function to use to print char */
 print_hex_4:

@@ -1,10 +1,8 @@
-#include <mmu/mmu.h>
-#include <mem.h>
+#include <mmu.h>
 #include <log.h>
+#include <util.h>
 
 #include <mailbox.h>
-
-addr_t gpio = 0x40000000;
 
 #define TEMPERATURE_TAG 0x30006
 #define MAX_CLOCK_RATE_TAG 0x30004
@@ -12,70 +10,73 @@ addr_t gpio = 0x40000000;
 
 DEFINE_MAILBOX_BUFFER(msg, 2);
 
-int main(int argc, const char* argv[]) {
+uint64_t _kernel_load_addr_high;
 
-	addr_t phaddr;
-	reg_t* var1;
-	reg_t* var2;
-	reg_t* var3;
-	reg_t* var4;
-	uint32_t tid[1] = { 0 };
-	uint32_t val;
+void prstr(const char *str) {
 
-	println("Welcome to the wonderful world of C!");
-
-	mem_init();
-
-	mbox_init(0x3f000000 | DEFAULT_MAILBOX_BASE);
-	create_msg(2, msg, TEMPERATURE_TAG, 1, tid);
-	mbox_comm(msg, PROPERTY_CHANNEL);
-	mbox_get(msg, 1, &val);
-
-	log(,"Got temperature: ", LOG_INFO);
-	_log(64, (uint64_t)val);
-	_log(ln, "");
-
-	mmu_init();
-
-	var1 = (reg_t*)alloc_fast(17);
-	var2 = (reg_t*)alloc_fast(12);
-	var3 = (reg_t*)alloc_fast(7);
-
-	free(var2);
-
-	dump_mem_accounting();
-
-	var2 = (reg_t*)alloc_slow(3, ALLOC_SLOW_UP);
-	var4 = (reg_t*)alloc_slow(2, ALLOC_SLOW_UP);
-
-	free(var1);
-
-	dump_mem_accounting();
-
-	free(var2);
-
-	/* rpi enable timer IRQ */
+	/* x3 stores link base for boot PA
+	 * x4 stores kernel load PA moved to high VA */
 	__asm volatile(
+		"mov x3, %0;"
+		"adr x5, _kernel_load_addr_high;"
+		"ldr x4, [x5];"
+		
+	        "ldr x2, =print_string;"
+		"sub x2, x2, x3;"
+		"add x2, x2, x4;"
+
+		"mov x0, %1;"
+		"ldr x1, =uart_write_char;"
+		"sub x1, x1, x3;"
+		"add x1, x1, x4;"
+
+		"br x2;" : : "r"(CONFIG_LOW_LINK_BASE), "r"(str));
+}
+
+int high_va_entry() {
+	prstr("Hello world, high VA!\n");
+	/* rpi enable timer IRQ */
+    	__asm volatile(
 		"adr	x0, irq_vector;"
 		"msr	vbar_el1, x0;"
-		"ldr	x1, =0x40003000;"
+		"ldr	x1, =0x3f003000;"
 		"ldr	w0, [x1, #0x04];"
 		"ldr	w2, =2000000;"
 		"add	w0, w0, w2;"
 		"str	w0, [x1, #0x10];"
 		"mov	w0, #0x2;"
-		"ldr	x1, =0x4000B210;"
+		"ldr	x1, =0x3f00B210;"
 		"str	w0, [x1];"
 		"ldr	w0, =0x2000000;"
-		"ldr	x1, =0x4000B214;"
+		"ldr	x1, =0x3f00B214;"
 		"str	w0, [x1];"
 		"msr	daifclr, #2;"
 		::
 	);
 
-	log(ln, "Timer initialized.", LOG_INFO);
-
+	prstr("Initialized IRQ\n");
+	
 	while (1) { }
+}
+
+__boot void high_va_jump(void) {
+	asm volatile(
+		"ldr x0, =_ld_stack_high;"
+		"mov sp, x0;"
+
+		"adr x0, _kernel_load_addr;"
+		"ldr x1, [x0];"
+		"ldr x0, =_kernel_load_addr_high;"
+		"str x1, [x0];"
+
+		"ldr x0, =high_va_entry;"
+		"br      x0");
+}
+
+__boot int main(int argc, const char* argv[]) {
+
+	mmu_init();
+	high_va_jump();
 
 	return 0;
 }

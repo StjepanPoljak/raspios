@@ -1,3 +1,5 @@
+.section .text.boot
+
 /* ******* GPIO address space ******* */
 .equ GPIOBASE,		0x3f200000
 
@@ -10,7 +12,7 @@
 
 /* ******* UART address space ******* */
 .globl UARTBASE
-UARTBASE:		.dword 0x3f215000
+UARTBASE:		.quad 0x3f215000
 
 .equ AUX_ENABLE,	0x004
 /* mUART, SPI1, SPI2 enable / disable (RW)
@@ -299,4 +301,3 @@ uart_write_char_loop:
 	add	sp, sp, #(16*2)
 
 	ret
-

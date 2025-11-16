@@ -1,3 +1,5 @@
+.section .text.boot
+	
 #include "config.h"
 
 .globl memzero

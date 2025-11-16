@@ -98,7 +98,7 @@ static void static_variable_integrity_test(void) {
 
 /* debug help */
 
-void dump_mem(void* start, unsigned int count, unsigned int cols) {
+void dump_mem(uint64_t start, unsigned int count, unsigned int cols) {
 	uint64_t* i;
 	uint64_t* end;
 	uint8_t remainder;
