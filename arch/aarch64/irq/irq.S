@@ -1,3 +1,5 @@
+.section .text
+
 .macro regs_save
 	sub sp, sp, #(16*16)
 	stp x0, x1, [sp]
@@ -86,19 +88,20 @@ hang:
 
 invalid_irq_handler:
 	regs_save
-	mrs x0, esr_el1
+/*	mrs x0, esr_el1
 	adr x1, uart_write_char
 	mov x2, #8
 	bl print_hex
+*/
 1:
 	b 1b
 
 sp_elx_irq_handler:
 	regs_save
-	adr x0, irq_handler_message
+/*	adr x0, irq_handler_message
 	adr x1, uart_write_char
 	bl print_string
-
+*/
 /*
 	ldr x0, =0x3f00b208
 	ldr w0, [x0]
@@ -120,6 +123,6 @@ sp_elx_irq_handler:
 
 	regs_restore
 	eret
-
+	
 invalid_irq_message: .asciz "(!) Unhandled IRQ received.\n\r"
 irq_handler_message: .asciz "(i) Got IRQ.\n\r"

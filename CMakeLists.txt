@@ -9,7 +9,9 @@ set(ROOT_DIR "${CMAKE_CURRENT_LIST_DIR}")
 
 set(ARCH "$ENV{ARCH}")
 set(ARCH_DIR "${ROOT_DIR}/arch/${ARCH}")
+set(ARCH_INC_DIR "${ARCH_DIR}/include")
 set(LINKER_SCRIPT "${ARCH_DIR}/link.ld")
+set(KERNEL_IMAGE "${CMAKE_CURRENT_BINARY_DIR}/kernel8.img")
 
 set(CMAKE_C_COMPILER "gcc")
 set(CMAKE_ASM_COMPILER "gcc")
@@ -34,10 +36,10 @@ add_compile_definitions(${CONFIG_OPTIONS})
 
 add_executable(${PROJECT_NAME})
 
-target_include_directories(${PROJECT_NAME} PRIVATE include)
+target_include_directories(${PROJECT_NAME} PRIVATE include ${ARCH_INC_DIR})
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-	COMMAND bash -c "${CMAKE_OBJCOPY} -O binary ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME} kernel8.img")
+	COMMAND bash -c "${CMAKE_OBJCOPY} -O binary ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME} ${KERNEL_IMAGE}")
 
 add_subdirectory(arch)
 add_subdirectory(device)

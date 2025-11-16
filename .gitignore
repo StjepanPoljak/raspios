@@ -4,3 +4,8 @@ build
 cc
 *.pyc
 simpfs/simpfs
+*.dtb
+
+*~
+\#*#
+.#*

@@ -50,7 +50,7 @@ mem_size_t pad(mem_size_t, align_t);
 void dump_mem_accounting(void);
 
 /* Dumps memory */
-void dump_mem(void*, unsigned int, unsigned int);
+void dump_mem(uint64_t, unsigned int, unsigned int);
 
 void* alloc_fast_align(mem_size_t, addr_t);
 

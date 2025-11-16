@@ -1,5 +1,9 @@
-#ifndef PTE_H
-#define PTE_H
+#ifndef AARCH64_PTE_H
+#define AARCH64_PTE_H
+
+#include <stdint.h>
+
+#define pentry_t uint64_t
 
 /* PTE-related */
 
