@@ -1,1 +1,1 @@
-add_subdirectory(aarch64)
+add_subdirectory("${ARCH_DIR}")

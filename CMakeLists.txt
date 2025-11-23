@@ -10,19 +10,23 @@ set(ROOT_DIR "${CMAKE_CURRENT_LIST_DIR}")
 set(ARCH "$ENV{ARCH}")
 set(ARCH_DIR "${ROOT_DIR}/arch/${ARCH}")
 set(ARCH_INC_DIR "${ARCH_DIR}/include")
-set(LINKER_SCRIPT "${ARCH_DIR}/link.ld")
+set(LINKER_SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/link.ld")
+set(KERNEL_BINARY "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}")
 set(KERNEL_IMAGE "${CMAKE_CURRENT_BINARY_DIR}/kernel8.img")
 
 set(CMAKE_C_COMPILER "gcc")
 set(CMAKE_ASM_COMPILER "gcc")
 set(CMAKE_OBJCOPY "objcopy")
-set(DEFAULT_C_FLAGS "-Wall -ffreestanding -nostdinc -nostdlib -nostartfiles")
+set(DEFAULT_C_FLAGS "-Wall -ffreestanding -nostartfiles -nostdlib")
 
 include("${ARCH_DIR}/setup_arch.cmake")
 
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -nostdlib -nostartfiles")
+if (LINKER_SCRIPT)
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -T ${LINKER_SCRIPT}")
+endif()
 set(CMAKE_C_FLAGS  "${DEFAULT_C_FLAGS}")
 set(CMAKE_ASM_FLAGS "${DEFAULT_C_FLAGS}")
-set(CMAKE_EXE_LINKER_FLAGS "-nostdlib -nostartfiles -T ${LINKER_SCRIPT}")
 
 execute_process(COMMAND bash -c
 	"sed '/^\\s*\\#/d' ${ROOT_DIR}/config.txt | awk \
