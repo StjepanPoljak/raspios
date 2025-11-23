@@ -22,11 +22,16 @@ start:
 
 	xor ax, ax
 	mov al, [sector_count]
-	mov bl, 0x10
+	mov bx, 0x10
 	call print_num
 	call print_newline
 
 	call memory_map
+
+	call print_newline
+
+skip:	
+	call print_memory_map
 	
 	cli
 	lgdt [gdt_descriptor]
@@ -58,18 +63,19 @@ memory_map:
 	push si
 
 	mov eax, 0x4000
-	mov di, ax
+	mov edi, eax
 	xor ebx, ebx
+ 	mov edx, 'PAMS'		; reverse of SMAP (0534D4150h)
 
 .memory_map_cont:
+
 	mov eax, 0xe820
 	mov ecx, 20
- 	mov edx, 'PAMS'		; reverse of SMAP (0534D4150h)
 	int 15h
 	jc .memory_map_error
-	add [memory_map_size], ebx
+	add [memory_map_size], ecx
+	add edi, ecx
 	test ebx, ebx
-	
 	jnz .memory_map_cont
 	jmp .memory_map_out
 
@@ -83,7 +89,7 @@ memory_map:
 
 	xor eax, eax
 	xor ebx, ebx
-	mov ax, [memory_map_size]
+	mov eax, [memory_map_size]
 	mov bl, 10
 	call print_num
 
@@ -95,6 +101,70 @@ memory_map:
 	pop eax
 	ret
 
+print_memory_map:
+	push eax
+	push ebx
+	push ecx
+	push edx
+	xor edx, edx
+	xor ecx, ecx
+	xor ebx, ebx
+	xor eax, eax
+
+.print_memory_map_loop:
+	mov eax, 0x4000
+	add eax, ecx
+
+	test edx, edx
+	jnz .no_print_address
+	;; print address
+	call print_newline
+	call print_hex
+
+	mov si, double_dot
+	call print_string
+
+	mov si, hex_prepend
+	call print_string
+
+.no_print_address:	
+	;; print value
+	push eax
+	mov eax, [eax]
+	xor ebx, ebx
+	call print_hex_raw
+	pop eax
+	
+	mov ebx, 20
+	xor edx, edx
+	div ebx
+	test edx, edx
+	je .print_newline
+	cmp edx, 4
+	je .print_newline
+	cmp edx, 8
+	je .print_newline
+	cmp edx, 12
+	je .print_newline
+	cmp edx, 16
+	je .print_newline
+	jmp .noprint_newline
+.print_newline:
+	add ecx, 4
+	mov si, separator
+	call print_string
+.noprint_newline:
+	pop eax
+	
+	cmp ecx, [memory_map_size]
+	jne .print_memory_map_loop
+
+	pop edx
+	pop ecx
+	pop ebx
+	pop eax
+	ret
+	
 boot_drive_msg		db "boot_drive: ", 0
 boot_drive		db 0
 sector_count_msg	db "sector_count: ", 0	
@@ -102,7 +172,13 @@ sector_count		db 0
 memory_map_error_msg	db "Error getting memory map.", 0
 memory_map_msg		db "Got memory map of size: ", 0
 memory_map_size		dd 0
+double_dot		db ": ", 0
+hex_prepend		db "0x", 0
+separator		db " - ", 0
 	
+memory_map_curr_base_addr	dd 0
+memory_map_curr_length		dd 0
+
 gdt_start:
 	dq 0
 gdt_code:			; index 1

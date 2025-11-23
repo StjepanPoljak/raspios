@@ -63,51 +63,71 @@ print_newline:
 	pop eax
 	ret
 	
-; ax <- value to print
-; bl <- base
+; eax <- value to print
+; ebx <- base
 print_num:
 	push eax
 	push ebx
 	push ecx
+	push edx
 	xor ecx, ecx
+	xor edx, edx
 
 .div_loop:
-	inc cx
-	div bl
-	push eax
-	test al, al
+	xor edx, edx
+	inc ecx
+	div ebx
+	push edx
+	test eax, eax
 	jz .print_digits_loop
-	xor ah, ah
 	jmp .div_loop
 
 .print_digits_loop:
-	pop eax
-	mov al, ah
-	xor ah, ah
+	pop edx
+	xor eax, eax
+	mov al, dl
 	call print_digit
-	dec cx
-	test cx, cx
+	dec ecx
+	test ecx, ecx
 	jz .print_digits_done
 	jmp .print_digits_loop
 
 .print_digits_done:
+	pop edx
 	pop ecx
 	pop ebx
 	pop eax
 	ret
 
 ; ax <- value to print
-print_hex:
+; bl <- prepend 0x
+print_hex_raw:
 	push eax
 	push ebx
+
+	test bl, bl
+	jz .skip_prepend
+
 	push eax
 	mov al, 48
 	call print_char
 	mov al, 120
-	call print_char
+	call print_char	
 	pop eax
-	mov bl, 16
+
+.skip_prepend:
+	mov ebx, 16
 	call print_num
+	pop ebx
+	pop eax
+	ret
+
+print_hex:
+	push eax
+	push ebx
+	xor ebx, ebx
+	mov bl, 1
+	call print_hex_raw
 	pop ebx
 	pop eax
 	ret
