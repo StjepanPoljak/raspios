@@ -205,7 +205,7 @@ __boot void map_early_high(uint64_t *l1, uint64_t *l2, uint64_t *l3) {
 	return;
 }
 
-
+/*
 __boot void jump(void) {
 	asm volatile(
 		"ldr x0, =high_va_entry;"
@@ -213,7 +213,7 @@ __boot void jump(void) {
 		"add x0, x0, x1;"
 		"br      x0");
 }
-
+*/
 __boot void mmu_init(void) {
 
 	load_table("0", raw_ptr(l1_low));

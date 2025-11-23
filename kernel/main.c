@@ -1,5 +1,7 @@
 #include <mmu.h>
 #include <log.h>
+#include <attrs.h>
+/*
 #include <util.h>
 
 #include <mailbox.h>
@@ -14,8 +16,8 @@ uint64_t _kernel_load_addr_high;
 
 void prstr(const char *str) {
 
-	/* x3 stores link base for boot PA
-	 * x4 stores kernel load PA moved to high VA */
+	// x3 stores link base for boot PA
+	// x4 stores kernel load PA moved to high VA
 	__asm volatile(
 		"mov x3, %0;"
 		"adr x5, _kernel_load_addr_high;"
@@ -35,7 +37,7 @@ void prstr(const char *str) {
 
 int high_va_entry() {
 	prstr("Hello world, high VA!\n");
-	/* rpi enable timer IRQ */
+	// rpi enable timer IRQ
     	__asm volatile(
 		"adr	x0, irq_vector;"
 		"msr	vbar_el1, x0;"
@@ -72,11 +74,11 @@ __boot void high_va_jump(void) {
 		"ldr x0, =high_va_entry;"
 		"br      x0");
 }
-
+*/
 __boot int main(int argc, const char* argv[]) {
 
 	mmu_init();
-	high_va_jump();
+	//high_va_jump();
 
 	return 0;
 }
