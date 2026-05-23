@@ -1,12 +1,14 @@
 bits 16
-	
-org 0x8000
 
 start:
 	mov [boot_drive], al
 	mov [sector_count], ah
 
-	mov sp, 0x8000
+	cli
+	mov ax, 0
+	mov ss, ax
+	mov sp, 0xffff
+	sti
 
 	mov si, boot_drive_msg
 	call print_string
@@ -30,7 +32,6 @@ start:
 
 	call print_newline
 
-skip:	
 	call print_memory_map
 	
 	cli
@@ -154,8 +155,6 @@ print_memory_map:
 	mov si, separator
 	call print_string
 .noprint_newline:
-	pop eax
-	
 	cmp ecx, [memory_map_size]
 	jne .print_memory_map_loop
 
@@ -220,36 +219,52 @@ protected_mode_start:
 	mov ss, eax
 	mov fs, eax
 	mov gs, eax
-	mov sp, 0x8000
+	mov sp, 0xffff
 
 	lidt [idt_descriptor]
 
+	cld
+	;; call clear_screen
 	call print_string_pm
-hang:
-	jmp hang
 
+	hlt
+
+clear_screen:
+	pusha
+	cld
+
+	mov edi, 0xB8000
+	mov ecx, 2000
+
+.loop:
+	mov ax, 0x0720
+	stosw
+	loop .loop
+
+	popa
+	ret
 
 print_string_pm:
-    pusha
+	pusha
+	cld
 
-    mov ebx, vga_buffer     ; destination pointer
-    mov esi, message        ; pointer to string
+	mov ebx, 0xB8000
+	mov esi, message
 
-.print_loop:
-    lodsb                   ; AL = [ESI], ESI++
-    or al, al
-    jz .done                ; end if 0-terminator
+.loop:
+	lodsb
+	test al, al
+	jz .done
 
-    mov [ebx], al           ; write character
-    mov byte [ebx+1], 0x07  ; attribute
-    add ebx, 2              ; next cell
-    jmp .print_loop
+	mov [ebx], al
+	mov byte [ebx+1], 0x07
+
+	add ebx, 2
+	jmp .loop
 
 .done:
-    popa
-    ret
+	popa
+	ret
 
-vga_buffer equ 0xB8000
-
-message db "Hello Protected Mode!", 0	
+message db "Hello Protected Mode!", 0
 msg db "Hello from boot stage 1.5...", 0

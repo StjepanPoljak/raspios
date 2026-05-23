@@ -33,12 +33,11 @@ start:
 	mov al, [boot_drive]
 	mov ah, [sector_count]
 	jmp 0x8000
-hang:
-	jmp hang
+
+	hlt
 
 boot_drive		db 0
 sector_count		db SECTOR_COUNT
 
 times 510-($-$$)db 0
 dw 0xAA55
-

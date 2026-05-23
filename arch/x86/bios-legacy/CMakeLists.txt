@@ -4,6 +4,8 @@ set(BOOT_STAGE1_ASM "${CMAKE_CURRENT_SOURCE_DIR}/boot-stage1.asm")
 set(BOOT_STAGE1_BIN "${CMAKE_CURRENT_BINARY_DIR}/boot-stage1.bin")
 
 set(BOOT_STAGE1_5_ASM "${CMAKE_CURRENT_SOURCE_DIR}/boot-stage1-5.asm")
+set(BOOT_STAGE1_5_ELF "${CMAKE_CURRENT_BINARY_DIR}/boot-stage1-5.elf")
+set(BOOT_STAGE1_5_OBJ "${CMAKE_CURRENT_BINARY_DIR}/boot-stage1-5.o")
 set(BOOT_STAGE1_5_BIN "${CMAKE_CURRENT_BINARY_DIR}/boot-stage1-5.bin")
 
 set(QEMU_ARGS
@@ -21,7 +23,7 @@ add_custom_target(qemu
 )
 
 add_custom_target(qemu_debug
-    COMMAND qemu-system-i386 ${QEMU_ARGS} -s -S
+    COMMAND qemu-system-i386 ${QEMU_ARGS} -gdb tcp::5555 -S
     DEPENDS ${KERNEL_IMAGE}
     COMMENT "Running raspios in QEMU (debug)..."
     USES_TERMINAL
@@ -35,9 +37,9 @@ add_custom_command(
 )
 
 add_custom_command(
-    OUTPUT ${BOOT_STAGE1_5_BIN}
+    OUTPUT ${BOOT_STAGE1_5_BIN} ${BOOT_STAGE1_5_ELF}
     COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/bios-print.asm ${CMAKE_CURRENT_BINARY_DIR}/bios-print.asm
-    COMMAND nasm -f bin ${BOOT_STAGE1_5_ASM} -o ${BOOT_STAGE1_5_BIN}
+    COMMAND nasm -f elf32 ${BOOT_STAGE1_5_ASM} -o ${BOOT_STAGE1_5_OBJ} && ld -m elf_i386 -Ttext 0x8000 ${BOOT_STAGE1_5_OBJ} -o ${BOOT_STAGE1_5_ELF} && objcopy -O binary ${BOOT_STAGE1_5_ELF} ${BOOT_STAGE1_5_BIN}
     DEPENDS ${BOOT_STAGE1_5_ASM}
     COMMENT "Assembling ${BOOT_STAGE1_5_ASM}"
 )
